@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KpiCard, Card, AlertaBanner, Semaforo, FunilBar, ScoreRing } from '../components/Shared';
+import { KpiCard, Card, AlertaBanner, Semaforo, FunilBar, ScoreRing, PersonCard } from '../components/Shared';
 import { fmt, consolidar, semaforo, semaforoInfo, pontosDeAtencao, statusCorretor, topCanais } from '../utils/index';
 
 const METRICAS_COLS = [
@@ -98,7 +98,7 @@ function CorretorModal({ c, media, controle, onClose, onViewFull }) {
   );
 }
 
-export function P3_Gerencia({ data, controle, target, setTarget, setPage }) {
+export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPhoto }) {
   const { corretores, gerentes, media } = data;
   const [selected, setSelected] = useState(target?.nome || gerentes[0] || '');
   const [modalCorretor, setModalCorretor] = useState(null);
@@ -110,9 +110,12 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage }) {
   return (
     <div className="page">
       <div className="page-header">
-        <div>
-          <h2 className="page-title">👥 Gerência</h2>
-          <div className="page-sub">Diagnóstico da equipe · Clique num corretor para detalhes rápidos</div>
+        <div className="page-header-person">
+          <PersonCard nome={selected} size={56} getPhoto={getPhoto}/>
+          <div>
+            <h2 className="page-title">👥 Gerência</h2>
+            <div className="page-sub">Diagnóstico da equipe · Clique num corretor para detalhes rápidos</div>
+          </div>
         </div>
         <select className="select-hero" value={selected}
           onChange={e=>setSelected(e.target.value)}>
@@ -160,7 +163,12 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage }) {
                 const st = statusCorretor(c);
                 return (
                   <tr key={c.corretor} className="clickable" onClick={()=>setModalCorretor(c)}>
-                    <td className="td-nome">{c.corretor}</td>
+                    <td>
+                      <div className="td-person">
+                        <PersonCard nome={c.corretor} size={32} getPhoto={getPhoto}/>
+                        <span className="td-nome" translate="no">{c.corretor}</span>
+                      </div>
+                    </td>
                     {METRICAS_COLS.map(m=>{
                       const val = c[m.key];
                       const nv = semaforo(val, media[m.key], m.inv);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, FunilBar, ScoreRing, MiniBar } from '../components/Shared';
+import { Card, FunilBar, ScoreRing, MiniBar, PersonCard } from '../components/Shared';
 import { RelatorioModal } from '../components/RelatorioModal';
 import { fmt, statusCorretor, topCanais } from '../utils/index';
 
@@ -248,7 +248,12 @@ export function P4_Corretor({ data, controle, target, setPage, media, getPhoto }
           {/* Cabeçalho do corretor */}
           <div className="cor-header-card">
             <div className="cor-header-left">
-              <ScoreRing score={st.score}/>
+              <div className="cor-header-avatar-wrap">
+                <PersonCard nome={corretor.corretor} size={72} getPhoto={getPhoto}/>
+                <div className="cor-score-ring">
+                  <ScoreRing score={st.score}/>
+                </div>
+              </div>
               <div>
                 <div className="cor-nome" translate="no">{corretor.corretor}</div>
                 <div className="cor-sub" translate="no">{corretor.gerente} · {corretor.superintendente}</div>

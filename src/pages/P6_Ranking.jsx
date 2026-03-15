@@ -170,7 +170,12 @@ export function P6_Ranking({ data }) {
   ];
   const rest = ranking.slice(3, 8);
   const periodo = corretores[0] ? `${corretores[0].dataInicio} a ${corretores[0].dataFim}` : '';
-  const allNames = useMemo(()=>[...new Set(corretores.map(c=>c.corretor))].filter(Boolean).sort(), [corretores]);
+  const allNames = useMemo(() => {
+    const corretoresNomes = [...new Set(corretores.map(c => c.corretor))].filter(Boolean).sort();
+    const gerentesNomes   = [...new Set(corretores.map(c => c.gerente))].filter(Boolean).sort();
+    const supersNomes     = [...new Set(corretores.map(c => c.superintendente))].filter(Boolean).sort();
+    return { corretores: corretoresNomes, gerentes: gerentesNomes, supers: supersNomes };
+  }, [corretores]);
 
   return (
     <div className="page ranking-page">
@@ -252,10 +257,22 @@ export function P6_Ranking({ data }) {
       {showPhotoMgr && (
         <div className="photo-mgr">
           <div className="photo-mgr-title">📷 Gerenciar Fotos dos Colaboradores</div>
-          <div className="photo-mgr-hint">Clique em qualquer avatar para fazer upload da foto</div>
-          <div className="photo-mgr-grid">
-            {allNames.map(nome=>(
-              <PhotoMgrItem key={nome} nome={nome} getPhoto={getPhoto} savePhoto={savePhoto}/>
+          <div className="photo-mgr-hint">Clique em qualquer avatar para fazer upload · Fotos salvas no navegador</div>
+
+          <div className="photo-mgr-sections">
+            {[
+              { label: '🏢 Superintendentes', names: allNames.supers },
+              { label: '👥 Gerentes',          names: allNames.gerentes },
+              { label: '👤 Corretores',        names: allNames.corretores },
+            ].map(sec => (
+              <div key={sec.label} className="photo-mgr-section">
+                <div className="photo-mgr-section-title">{sec.label}</div>
+                <div className="photo-mgr-grid">
+                  {sec.names.map(nome => (
+                    <PhotoMgrItem key={nome} nome={nome} getPhoto={getPhoto} savePhoto={savePhoto}/>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>

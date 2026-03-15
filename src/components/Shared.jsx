@@ -1,5 +1,22 @@
 import { fmt, semaforoInfo } from '../utils/index';
 
+// ---- PersonCard — avatar redondo com foto ou inicial ----
+export function PersonCard({ nome, size = 56, getPhoto, style = {} }) {
+  const photo = getPhoto ? getPhoto(nome) : null;
+  const initials = nome
+    ? nome.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    : '?';
+  return (
+    <div className="person-card-avatar" style={{ width: size, height: size, ...style }}>
+      {photo
+        ? <img src={photo} alt={nome}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}/>
+        : <span className="person-card-initial"
+            style={{ fontSize: Math.max(14, size * 0.35) }}>{initials}</span>}
+    </div>
+  );
+}
+
 // ---- KPI Card ----
 export function KpiCard({ icon, label, value, sub, gold }) {
   return (

@@ -884,3 +884,57 @@ button,select,input{font-family:var(--font);}
   .rank-top-bar { flex-direction: column; gap: 8px; }
   .rank-trophy-sm { width: 44px; height: 44px; }
 }
+
+/* ===== PersonCard ===== */
+.person-card-avatar {
+  border-radius: 50%; overflow: hidden; flex-shrink: 0;
+  background: var(--bg2); border: 2px solid var(--gold-dim);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 10px var(--gold-dim);
+}
+.person-card-initial {
+  font-family: var(--font-d); font-weight: 600;
+  color: var(--gold); letter-spacing: .04em;
+}
+
+/* ===== page-header-person ===== */
+.page-header-person {
+  display: flex; align-items: center; gap: 14px;
+}
+
+/* ===== td-person (foto + nome na tabela) ===== */
+.td-person {
+  display: flex; align-items: center; gap: 8px;
+}
+.td-person .td-nome { white-space: nowrap; }
+
+/* ===== engaj-header-left ===== */
+.engaj-header-left {
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ===== cor-header-avatar-wrap ===== */
+.cor-header-avatar-wrap {
+  position: relative; flex-shrink: 0;
+}
+.cor-score-ring {
+  position: absolute; bottom: -6px; right: -6px;
+  transform: scale(0.7); transform-origin: bottom right;
+  pointer-events: none;
+}
+
+/* ===== photo-mgr-section ===== */
+.photo-mgr-sections {
+  display: flex; flex-direction: column; gap: 20px;
+}
+.photo-mgr-section {}
+.photo-mgr-section-title {
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text3);
+  padding-bottom: 8px; margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Light theme photo-mgr tweaks */
+[data-theme="light"] .photo-mgr { background: #fff; }
+[data-theme="light"] .person-card-avatar { background: #f0f0f5; }

@@ -70,8 +70,8 @@ export default function App() {
   const renderPage = () => {
     switch(page) {
       case 'diretoria': return <P1_Diretoria data={data} setPage={setPage} setTarget={setTarget}/>;
-      case 'super':     return <P2_Superintendencia data={data} target={target} setTarget={setTarget} setPage={setPage}/>;
-      case 'gerencia':  return <P3_Gerencia data={data} controle={controle} target={target} setTarget={setTarget} setPage={setPage}/>;
+      case 'super':     return <P2_Superintendencia data={data} target={target} setTarget={setTarget} setPage={setPage} getPhoto={getPhoto}/>;
+      case 'gerencia':  return <P3_Gerencia data={data} controle={controle} target={target} setTarget={setTarget} setPage={setPage} getPhoto={getPhoto}/>;
       case 'corretor':  return <P4_Corretor data={data} controle={controle} target={target} setPage={setPage} media={data.media} getPhoto={getPhoto}/>;
       case 'arena':     return <P5_Arena data={data}/>;
       case 'ranking':   return <P6_Ranking data={data}/>;
