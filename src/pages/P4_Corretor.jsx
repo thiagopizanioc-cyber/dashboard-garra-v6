@@ -192,7 +192,7 @@ function GerenteBlock({ c }) {
   );
 }
 
-export function P4_Corretor({ data, controle, target, setPage, media }) {
+export function P4_Corretor({ data, controle, target, setPage, media, getPhoto }) {
   const { corretores, supers, gerentes } = data;
 
   const [selectedSuper, setSelectedSuper] = useState(target?.data?.superintendente || supers[0] || '');
@@ -297,6 +297,7 @@ export function P4_Corretor({ data, controle, target, setPage, media }) {
         <RelatorioModal
           corretor={corretor}
           media={media}
+          getPhoto={getPhoto}
           onClose={() => setShowRelatorio(false)}
         />
       )}

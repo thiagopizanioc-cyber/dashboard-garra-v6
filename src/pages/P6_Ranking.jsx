@@ -1,114 +1,265 @@
-import { useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { consolidar, fmt } from '../utils/index';
+import { usePhotos, resizeAndStore, getPrizeData, savePrizeData } from '../hooks/usePhotos';
 
-const BADGES = {
-  1: { img: '/logo-ouro.jpeg',   label: '🥇 1º Lugar', cls: 'pos-ouro'   },
-  2: { img: '/logo-prata.jpeg',  label: '🥈 2º Lugar', cls: 'pos-prata'  },
-  3: { img: '/logo-bronze.jpeg', label: '🥉 3º Lugar', cls: 'pos-bronze' },
-};
+// ---------- helpers ----------
+function buildRanking(type, corretores) {
+  if (type === 'corretores') {
+    return [...corretores].sort((a,b)=>b.preVendas-a.preVendas)
+      .map((c,i)=>({ nome:c.corretor, valor:c.preVendas, sub:c.gerente, pos:i+1 }));
+  }
+  const map = {};
+  corretores.forEach(c => {
+    const k = type==='gerentes' ? c.gerente : c.superintendente;
+    if (!map[k]) map[k]=[];
+    map[k].push(c);
+  });
+  return Object.entries(map)
+    .map(([nome,lista])=>{ const cons=consolidar(lista); return {nome, valor:cons.preVendas, sub:`${cons.ativos} ativos`, pos:0}; })
+    .sort((a,b)=>b.valor-a.valor)
+    .map((it,i)=>({...it, pos:i+1}));
+}
 
-function Podium({ titulo, itens, metricaLabel }) {
-  const top3 = itens.slice(0, 3);
-  const resto = itens.slice(3, 8);
-  // Ordem do pódio: 2º, 1º, 3º (visual)
-  const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
-
+// ---------- PersonAvatar ----------
+function PersonAvatar({ nome, size, editMode, getPhoto, savePhoto }) {
+  const inputRef = useRef();
+  const photo = getPhoto(nome);
+  async function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const dataUrl = await resizeAndStore(file, 220);
+    savePhoto(nome, dataUrl);
+    e.target.value = '';
+  }
   return (
-    <div className="rank-section">
-      <h3 className="rank-section-title">{titulo}</h3>
-
-      <div className="podium-wrap">
-        {podiumOrder.map((item, idx) => {
-          const pos = item.pos;
-          const badge = BADGES[pos];
-          const isFirst = pos === 1;
-          return (
-            <div key={item.nome} className={`podium-item ${badge.cls} ${isFirst ? 'podium-first' : ''}`}>
-              <img src={badge.img} alt={badge.label} className="podium-badge"/>
-              <div className="podium-pos">{badge.label}</div>
-              <div className="podium-nome" translate="no">{item.nome}</div>
-              <div className="podium-val">{item.valor} <span className="podium-metric">{metricaLabel}</span></div>
-              <div className={`podium-base podium-base-${pos}`}/>
-            </div>
-          );
-        })}
-      </div>
-
-      {resto.length > 0 && (
-        <div className="rank-list">
-          {resto.map((item) => (
-            <div key={item.nome} className="rank-list-row">
-              <span className="rank-list-pos">{item.pos}º</span>
-              <span className="rank-list-nome" translate="no">{item.nome}</span>
-              <span className="rank-list-val">{item.valor} {metricaLabel}</span>
-            </div>
-          ))}
-        </div>
-      )}
+    <div className={`person-avatar ${editMode?'editable':''}`}
+      style={{width:size,height:size}}
+      onClick={()=>editMode&&inputRef.current?.click()}
+      title={editMode?`Clique para foto de ${nome}`:nome}>
+      {photo
+        ? <img src={photo} alt={nome} style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:'50%'}}/>
+        : <div className="person-initials">{nome?.split(' ').map(w=>w[0]).slice(0,2).join('')||'?'}</div>}
+      {editMode && <div className="person-edit-btn">📷</div>}
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{display:'none'}}/>
     </div>
   );
 }
 
+// ---------- PhotoMgrItem ----------
+function PhotoMgrItem({ nome, getPhoto, savePhoto }) {
+  const inputRef = useRef();
+  const photo = getPhoto(nome);
+  async function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const dataUrl = await resizeAndStore(file, 220);
+    savePhoto(nome, dataUrl);
+    e.target.value = '';
+  }
+  return (
+    <div className="photo-mgr-item">
+      <div className="photo-mgr-avatar" onClick={()=>inputRef.current?.click()}>
+        {photo
+          ? <img src={photo} alt={nome} style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:'50%'}}/>
+          : <span className="photo-mgr-initial">{nome.slice(0,1)}</span>}
+        <div className="photo-mgr-overlay">📷</div>
+      </div>
+      <div className="photo-mgr-nome" translate="no">{nome}</div>
+      {photo && (
+        <button className="photo-mgr-remove" onClick={()=>savePhoto(nome,null)} title="Remover">✕</button>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{display:'none'}}/>
+    </div>
+  );
+}
+
+// ---------- PrizeCard ----------
+function PrizeCard({ pos, prize, editMode, onPrizeChange }) {
+  const imgRef = useRef();
+  async function handleImg(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const dataUrl = await resizeAndStore(file, 280);
+    onPrizeChange(pos, {...prize, img:dataUrl, enabled:true});
+    e.target.value='';
+  }
+  if (editMode) return (
+    <div className="prize-editor">
+      <label className="prize-toggle-label">
+        <input type="checkbox" checked={!!prize.enabled}
+          onChange={e=>onPrizeChange(pos,{...prize,enabled:e.target.checked})}/>
+        &nbsp;Premiação {pos}º
+      </label>
+      {prize.enabled && (<>
+        <div className="prize-img-btn" onClick={()=>imgRef.current?.click()}>
+          {prize.img ? <img src={prize.img} alt="prêmio" className="prize-preview-img"/> : <span>📦 Imagem</span>}
+        </div>
+        <input ref={imgRef} type="file" accept="image/*" onChange={handleImg} style={{display:'none'}}/>
+        <input className="prize-text-input" placeholder="Nome do prêmio..."
+          value={prize.txt||''} onChange={e=>onPrizeChange(pos,{...prize,txt:e.target.value})}/>
+      </>)}
+    </div>
+  );
+  if (!prize.enabled) return null;
+  return (
+    <div className="prize-display">
+      {prize.img && <img src={prize.img} alt="prêmio" className="prize-img"/>}
+      {prize.txt && <div className="prize-label">{prize.txt}</div>}
+    </div>
+  );
+}
+
+// ---------- PodiumSlot ----------
+const SLOT_COLORS = {
+  1: { border:'#f5c542', glow:'rgba(245,197,66,.6)', platform:'linear-gradient(180deg,#c8a200 0%,#7a5e00 100%)', medal:'/logo-ouro.jpeg' },
+  2: { border:'#00cfff', glow:'rgba(0,180,255,.5)', platform:'linear-gradient(180deg,#00a8cc 0%,#005a78 100%)', medal:'/logo-prata-bg.jpg' },
+  3: { border:'#ff6644', glow:'rgba(255,90,50,.5)', platform:'linear-gradient(180deg,#cc4422 0%,#7a2210 100%)', medal:'/logo-bronze.jpeg' },
+};
+const HEIGHTS = { 1:120, 2:80, 3:60 };
+const AVATAR_SIZES = { 1:110, 2:90, 3:80 };
+const FLOAT_DELAYS = { 1:'0s', 2:'0.4s', 3:'0.8s' };
+
+function PodiumSlot({ item, pos, editMode, getPhoto, savePhoto, prize, onPrizeChange }) {
+  const c = SLOT_COLORS[pos];
+  return (
+    <div className={`podium-slot podium-pos-${pos}`}>
+      {/* Prize */}
+      <PrizeCard pos={pos} prize={prize} editMode={editMode} onPrizeChange={onPrizeChange}/>
+      {/* Floating person */}
+      <div className="podium-float" style={{animationDelay: FLOAT_DELAYS[pos]}}>
+        <div className="podium-avatar-ring" style={{
+          boxShadow:`0 0 0 3px ${c.border}, 0 0 25px ${c.glow}, 0 0 50px ${c.glow}`}}>
+          <PersonAvatar nome={item?.nome||'?'} size={AVATAR_SIZES[pos]}
+            editMode={editMode} getPhoto={getPhoto} savePhoto={savePhoto}/>
+        </div>
+        <div className="podium-name" style={{color:c.border}} translate="no">{item?.nome||'—'}</div>
+        <div className="podium-score">{item?.valor??0}<span className="podium-score-sub"> PV</span></div>
+      </div>
+      {/* Platform */}
+      <div className="podium-platform" style={{
+        height:HEIGHTS[pos], background:c.platform,
+        border:`2px solid ${c.border}`,
+        boxShadow:`0 0 24px ${c.glow}, inset 0 0 12px rgba(255,255,255,.08)`}}>
+        <img src={c.medal} alt="" className="platform-medal"/>
+        <div className="platform-num">{pos===1?'🥇':pos===2?'🥈':'🥉'}</div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Main Component ----------
 export function P6_Ranking({ data }) {
   const { corretores } = data;
+  const { getPhoto, savePhoto } = usePhotos();
+  const [category, setCategory] = useState('corretores');
+  const [editMode, setEditMode] = useState(false);
+  const [showPhotoMgr, setShowPhotoMgr] = useState(false);
+  const [prizes, setPrizes] = useState(()=>({ 1:getPrizeData(1), 2:getPrizeData(2), 3:getPrizeData(3) }));
 
-  const rankSupers = useMemo(() => {
-    const map = {};
-    corretores.forEach(c => {
-      if (!map[c.superintendente]) map[c.superintendente] = [];
-      map[c.superintendente].push(c);
-    });
-    return Object.entries(map)
-      .map(([nome, lista]) => {
-        const cons = consolidar(lista);
-        return { nome, valor: cons.preVendas, sub: `${cons.ativos} corretores` };
-      })
-      .sort((a, b) => b.valor - a.valor)
-      .map((item, i) => ({ ...item, pos: i + 1 }));
-  }, [corretores]);
+  function handlePrizeChange(pos, d) {
+    savePrizeData(pos, d);
+    setPrizes(p => ({ ...p, [pos]: d }));
+  }
 
-  const rankGerentes = useMemo(() => {
-    const map = {};
-    corretores.forEach(c => {
-      if (!map[c.gerente]) map[c.gerente] = [];
-      map[c.gerente].push(c);
-    });
-    return Object.entries(map)
-      .map(([nome, lista]) => {
-        const cons = consolidar(lista);
-        return { nome, valor: cons.preVendas, sub: `${cons.ativos} corretores` };
-      })
-      .sort((a, b) => b.valor - a.valor)
-      .map((item, i) => ({ ...item, pos: i + 1 }));
-  }, [corretores]);
-
-  const rankCorretores = useMemo(() => {
-    return [...corretores]
-      .sort((a, b) => b.preVendas - a.preVendas)
-      .map((c, i) => ({
-        nome: c.corretor, valor: c.preVendas,
-        sub: c.gerente, pos: i + 1,
-      }));
-  }, [corretores]);
-
+  const ranking = useMemo(()=>buildRanking(category, corretores), [category, corretores]);
+  // Podium visual order: 2nd (left) | 1st (center) | 3rd (right)
+  const slotOrder = [
+    { item: ranking[1], pos: 2 },
+    { item: ranking[0], pos: 1 },
+    { item: ranking[2], pos: 3 },
+  ];
+  const rest = ranking.slice(3, 8);
   const periodo = corretores[0] ? `${corretores[0].dataInicio} a ${corretores[0].dataFim}` : '';
+  const allNames = useMemo(()=>[...new Set(corretores.map(c=>c.corretor))].filter(Boolean).sort(), [corretores]);
 
   return (
     <div className="page ranking-page">
-      {/* Header com troféu */}
-      <div className="rank-header">
-        <img src="/trophy.png" alt="Troféu" className="rank-trophy"/>
-        <div>
-          <h1 className="rank-title">HALL DA FAMA</h1>
-          <div className="rank-periodo">{periodo}</div>
-          <div className="rank-sub">Ranking por Pré-Vendas no período</div>
+      {/* Header */}
+      <div className="rank-top-bar">
+        <img src="/trophy.png" className="rank-trophy-sm" alt=""/>
+        <div className="rank-header-text">
+          <div className="rank-title">PÓDIO DE EXCELÊNCIA</div>
+          <div className="rank-sub">Equipe GARRA · Vendas Imobiliárias {periodo && `· ${periodo}`}</div>
         </div>
-        <img src="/trophy.png" alt="Troféu" className="rank-trophy rank-trophy-flip"/>
+        <img src="/trophy.png" className="rank-trophy-sm rank-flip" alt=""/>
       </div>
 
-      <Podium titulo="🏢 Superintendências" itens={rankSupers}   metricaLabel="PV"/>
-      <Podium titulo="👥 Gerentes"           itens={rankGerentes} metricaLabel="PV"/>
-      <Podium titulo="👤 Corretores"         itens={rankCorretores.slice(0,8)} metricaLabel="PV"/>
+      {/* Controls */}
+      <div className="rank-controls">
+        <div className="rank-cats">
+          {[{id:'corretores',l:'👤 Corretores'},{id:'gerentes',l:'👥 Gerentes'},{id:'supers',l:'🏢 Supers'}].map(cat=>(
+            <button key={cat.id} className={`btn-cat ${category===cat.id?'active':''}`}
+              onClick={()=>setCategory(cat.id)}>{cat.l}</button>
+          ))}
+        </div>
+        <div className="rank-actions">
+          <button className={`btn-cat ${editMode?'active':''}`} onClick={()=>setEditMode(e=>!e)}>
+            {editMode?'✅ Salvar':'⚙️ Editar'}
+          </button>
+          <button className="btn-cat" onClick={()=>setShowPhotoMgr(s=>!s)}>
+            📷 Fotos
+          </button>
+        </div>
+      </div>
+
+      {editMode && (
+        <div className="edit-hint">
+          ✏️ Modo edição — clique nos avatares para adicionar fotos · Configure prêmios por posição
+        </div>
+      )}
+
+      {/* ===== PODIUM ARENA ===== */}
+      <div className="podium-arena">
+        {/* Stars */}
+        <div className="podium-stars"/>
+        {/* Neon rings */}
+        <div className="neon-ring nr-1"/><div className="neon-ring nr-2"/><div className="neon-ring nr-3"/>
+        {/* Stage */}
+        <div className="podium-stage">
+          {slotOrder.map(({item,pos})=>(
+            <PodiumSlot key={pos} item={item} pos={pos}
+              editMode={editMode} getPhoto={getPhoto} savePhoto={savePhoto}
+              prize={prizes[pos]} onPrizeChange={handlePrizeChange}/>
+          ))}
+        </div>
+        {/* Base plate */}
+        <div className="podium-base-plate">
+          PÓDIO DE EXCELÊNCIA — EQUIPE GARRA — VENDAS IMOBILIÁRIAS
+        </div>
+      </div>
+
+      {/* Rest of ranking */}
+      {rest.length>0 && (
+        <div className="rank-rest-card">
+          <div className="rank-rest-title">📋 Classificação Geral</div>
+          {rest.map(item=>(
+            <div key={item.nome} className="rank-rest-row">
+              <span className="rank-rest-pos">{item.pos}º</span>
+              <div className="rr-avatar">
+                {getPhoto(item.nome)
+                  ? <img src={getPhoto(item.nome)} alt="" style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:'50%'}}/>
+                  : <span>{item.nome.slice(0,1)}</span>}
+              </div>
+              <span className="rank-rest-nome" translate="no">{item.nome}</span>
+              <span className="rank-rest-sub">{item.sub}</span>
+              <span className="rank-rest-val">{item.valor} PV</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Photo Manager */}
+      {showPhotoMgr && (
+        <div className="photo-mgr">
+          <div className="photo-mgr-title">📷 Gerenciar Fotos dos Colaboradores</div>
+          <div className="photo-mgr-hint">Clique em qualquer avatar para fazer upload da foto</div>
+          <div className="photo-mgr-grid">
+            {allNames.map(nome=>(
+              <PhotoMgrItem key={nome} nome={nome} getPhoto={getPhoto} savePhoto={savePhoto}/>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

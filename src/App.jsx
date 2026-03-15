@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMetricas } from './hooks/useMetricas';
 import { useControle } from './hooks/useControle';
+import { usePhotos } from './hooks/usePhotos';
 import { Nav } from './components/Nav';
 import { P1_Diretoria }        from './pages/P1_Diretoria';
 import { P2_Superintendencia } from './pages/P2_Superintendencia';
@@ -10,7 +11,7 @@ import { P5_Arena }            from './pages/P5_Arena';
 import { P6_Ranking }          from './pages/P6_Ranking';
 import './App.css';
 
-const BADGE_IMGS = ['/logo-bronze.jpeg', '/logo-prata.jpeg', '/logo-ouro.jpeg'];
+const BADGE_IMGS = ['/logo-bronze.jpeg', '/logo-prata-bg.jpg', '/logo-ouro.jpeg'];
 
 function LoadingScreen() {
   const [idx, setIdx] = useState(0);
@@ -22,8 +23,7 @@ function LoadingScreen() {
     <div className="loading-screen">
       <div className="loading-badge-wrap">
         {BADGE_IMGS.map((src, i) => (
-          <img key={src} src={src} alt=""
-            className={`loading-badge ${i === idx ? 'badge-active' : ''}`}/>
+          <img key={src} src={src} alt="" className={`loading-badge ${i===idx?'badge-active':''}`}/>
         ))}
       </div>
       <div className="loading-text">Carregando dados do Sistema GARRA...</div>
@@ -55,11 +55,11 @@ function ErrorScreen({ error, refetch }) {
 export default function App() {
   const { data, loading, error, refetch, lastUpdate } = useMetricas();
   const { controle } = useControle();
-  const [page, setPage]     = useState('diretoria');
+  const { getPhoto, savePhoto } = usePhotos();
+  const [page, setPage]   = useState('diretoria');
   const [target, setTarget] = useState(null);
-  const [theme, setTheme]   = useState('dark');
+  const [theme, setTheme] = useState('light');
 
-  // Aplica tema no <html>
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
@@ -72,7 +72,7 @@ export default function App() {
       case 'diretoria': return <P1_Diretoria data={data} setPage={setPage} setTarget={setTarget}/>;
       case 'super':     return <P2_Superintendencia data={data} target={target} setTarget={setTarget} setPage={setPage}/>;
       case 'gerencia':  return <P3_Gerencia data={data} controle={controle} target={target} setTarget={setTarget} setPage={setPage}/>;
-      case 'corretor':  return <P4_Corretor data={data} controle={controle} target={target} setPage={setPage} media={data.media}/>;
+      case 'corretor':  return <P4_Corretor data={data} controle={controle} target={target} setPage={setPage} media={data.media} getPhoto={getPhoto}/>;
       case 'arena':     return <P5_Arena data={data}/>;
       case 'ranking':   return <P6_Ranking data={data}/>;
       default:          return <P1_Diretoria data={data} setPage={setPage} setTarget={setTarget}/>;
@@ -81,9 +81,8 @@ export default function App() {
 
   return (
     <div className="layout">
-      {/* Marca d'água — visível só no tema claro */}
       <div className="watermark" aria-hidden="true">
-        <img src="/logo-ouro.jpeg" alt=""/>
+        <img src="/logo-prata-bg.jpg" alt=""/>
       </div>
       <Nav page={page} setPage={(p)=>{setPage(p);setTarget(null);}}
            lastUpdate={lastUpdate} refetch={refetch}

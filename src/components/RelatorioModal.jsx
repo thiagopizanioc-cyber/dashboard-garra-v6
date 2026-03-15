@@ -66,11 +66,12 @@ Responda SOMENTE no formato JSON abaixo (sem markdown, sem explicações fora do
   return JSON.parse(clean);
 }
 
-export function RelatorioModal({ corretor, media, onClose }) {
+export function RelatorioModal({ corretor, media, onClose, getPhoto }) {
   const [analise, setAnalise] = useState(null);
   const [loadingIA, setLoadingIA] = useState(false);
   const [erroIA, setErroIA] = useState(null);
   const printRef = useRef();
+  const photo = getPhoto ? getPhoto(corretor.corretor) : null;
 
   const engaj = corretor.diasTrabalhados > 0
     ? ((corretor.antes20h + corretor.ate00h) / corretor.diasTrabalhados * 100).toFixed(0)
@@ -165,7 +166,11 @@ export function RelatorioModal({ corretor, media, onClose }) {
         <div ref={printRef} className="relatorio-content">
 
           <div className="rel-header">
-            <img src="/logo-ouro.jpeg" alt="GARRA" className="rel-logo"/>
+            <div className="rel-header-avatar">
+              {photo
+                ? <img src={photo} alt={corretor.corretor} style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:'50%'}}/>
+                : <img src="/logo-ouro.jpeg" alt="GARRA" className="rel-logo"/>}
+            </div>
             <div>
               <h1 className="rel-title">RAIO-X DE PERFORMANCE</h1>
               <div className="rel-sub" translate="no">
