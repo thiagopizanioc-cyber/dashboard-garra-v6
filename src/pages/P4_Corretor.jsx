@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, FunilBar, ScoreRing, MiniBar } from '../components/Shared';
+import { RelatorioModal } from '../components/RelatorioModal';
 import { fmt, statusCorretor, topCanais } from '../utils/index';
 
 function DisciplinaBlock({ c, controle }) {
@@ -191,12 +192,13 @@ function GerenteBlock({ c }) {
   );
 }
 
-export function P4_Corretor({ data, controle, target, setPage }) {
-  const { corretores, supers, gerentes, media } = data;
+export function P4_Corretor({ data, controle, target, setPage, media }) {
+  const { corretores, supers, gerentes } = data;
 
   const [selectedSuper, setSelectedSuper] = useState(target?.data?.superintendente || supers[0] || '');
   const [selectedGer,   setSelectedGer]   = useState(target?.data?.gerente || '');
   const [selectedCor,   setSelectedCor]   = useState(target?.nome || '');
+  const [showRelatorio, setShowRelatorio] = useState(false);
 
   const listGer = corretores
     .filter(c=>!selectedSuper||c.superintendente===selectedSuper)
@@ -248,12 +250,17 @@ export function P4_Corretor({ data, controle, target, setPage }) {
             <div className="cor-header-left">
               <ScoreRing score={st.score}/>
               <div>
-                <div className="cor-nome">{corretor.corretor}</div>
-                <div className="cor-sub">{corretor.gerente} · {corretor.superintendente}</div>
+                <div className="cor-nome" translate="no">{corretor.corretor}</div>
+                <div className="cor-sub" translate="no">{corretor.gerente} · {corretor.superintendente}</div>
                 <div className="cor-periodo">{corretor.dataInicio} a {corretor.dataFim} · {corretor.periodo} dias</div>
               </div>
             </div>
-            <span className="badge badge-lg" style={{color:st.color,background:st.bg}}>{st.label}</span>
+            <div style={{display:'flex',gap:10,alignItems:'center'}}>
+              <button className="btn-relatorio" onClick={() => setShowRelatorio(true)}>
+                📄 Gerar Relatório
+              </button>
+              <span className="badge badge-lg" style={{color:st.color,background:st.bg}}>{st.label}</span>
+            </div>
           </div>
 
           {/* Blocos */}
@@ -283,6 +290,15 @@ export function P4_Corretor({ data, controle, target, setPage }) {
             </Card>
           )}
         </>
+      )}
+
+      {/* Modal de Relatório */}
+      {showRelatorio && corretor && (
+        <RelatorioModal
+          corretor={corretor}
+          media={media}
+          onClose={() => setShowRelatorio(false)}
+        />
       )}
     </div>
   );

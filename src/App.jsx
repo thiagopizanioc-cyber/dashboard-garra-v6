@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMetricas } from './hooks/useMetricas';
 import { useControle } from './hooks/useControle';
 import { Nav } from './components/Nav';
@@ -7,12 +7,25 @@ import { P2_Superintendencia } from './pages/P2_Superintendencia';
 import { P3_Gerencia }         from './pages/P3_Gerencia';
 import { P4_Corretor }         from './pages/P4_Corretor';
 import { P5_Arena }            from './pages/P5_Arena';
+import { P6_Ranking }          from './pages/P6_Ranking';
 import './App.css';
 
+const BADGE_IMGS = ['/logo-bronze.jpeg', '/logo-prata.jpeg', '/logo-ouro.jpeg'];
+
 function LoadingScreen() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % 3), 700);
+    return () => clearInterval(t);
+  }, []);
   return (
     <div className="loading-screen">
-      <div className="loading-logo">G</div>
+      <div className="loading-badge-wrap">
+        {BADGE_IMGS.map((src, i) => (
+          <img key={src} src={src} alt=""
+            className={`loading-badge ${i === idx ? 'badge-active' : ''}`}/>
+        ))}
+      </div>
       <div className="loading-text">Carregando dados do Sistema GARRA...</div>
       <div className="loading-bar"><div className="loading-bar-fill"/></div>
     </div>
@@ -44,6 +57,12 @@ export default function App() {
   const { controle } = useControle();
   const [page, setPage]     = useState('diretoria');
   const [target, setTarget] = useState(null);
+  const [theme, setTheme]   = useState('dark');
+
+  // Aplica tema no <html>
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   if (loading) return <LoadingScreen/>;
   if (error)   return <ErrorScreen error={error} refetch={refetch}/>;
@@ -53,15 +72,22 @@ export default function App() {
       case 'diretoria': return <P1_Diretoria data={data} setPage={setPage} setTarget={setTarget}/>;
       case 'super':     return <P2_Superintendencia data={data} target={target} setTarget={setTarget} setPage={setPage}/>;
       case 'gerencia':  return <P3_Gerencia data={data} controle={controle} target={target} setTarget={setTarget} setPage={setPage}/>;
-      case 'corretor':  return <P4_Corretor data={data} controle={controle} target={target} setPage={setPage}/>;
+      case 'corretor':  return <P4_Corretor data={data} controle={controle} target={target} setPage={setPage} media={data.media}/>;
       case 'arena':     return <P5_Arena data={data}/>;
+      case 'ranking':   return <P6_Ranking data={data}/>;
       default:          return <P1_Diretoria data={data} setPage={setPage} setTarget={setTarget}/>;
     }
   };
 
   return (
     <div className="layout">
-      <Nav page={page} setPage={(p)=>{setPage(p);setTarget(null);}} lastUpdate={lastUpdate} refetch={refetch}/>
+      {/* Marca d'água — visível só no tema claro */}
+      <div className="watermark" aria-hidden="true">
+        <img src="/logo-ouro.jpeg" alt=""/>
+      </div>
+      <Nav page={page} setPage={(p)=>{setPage(p);setTarget(null);}}
+           lastUpdate={lastUpdate} refetch={refetch}
+           theme={theme} setTheme={setTheme}/>
       <div className="content">{renderPage()}</div>
     </div>
   );
