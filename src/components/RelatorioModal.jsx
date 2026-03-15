@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { fmt, topCanais } from '../utils/index';
 
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || '';
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 async function gerarAnaliseIA(corretor, media) {
   const engaj = corretor.diasTrabalhados > 0
@@ -47,25 +47,21 @@ Responda SOMENTE no formato JSON abaixo (sem markdown, sem explicações fora do
   "pauta": ["pergunta 1 para reunião com gerente", "pergunta 2", "pergunta 3", "pergunta 4"]
 }`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+      }),
+    }
+  );
 
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   const data = await res.json();
-  const text = data.content[0].text;
-  // Remove possíveis backticks de markdown
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
   const clean = text.replace(/```json|```/g, '').trim();
   return JSON.parse(clean);
 }
@@ -81,8 +77,8 @@ export function RelatorioModal({ corretor, media, onClose }) {
     : 0;
 
   async function handleGerarIA() {
-    if (!API_KEY) {
-      setErroIA('Configure VITE_ANTHROPIC_API_KEY nas variáveis de ambiente da Vercel.');
+    if (!GEMINI_KEY) {
+      setErroIA('Configure VITE_GEMINI_API_KEY nas variáveis de ambiente da Vercel.');
       return;
     }
     setLoadingIA(true); setErroIA(null);
