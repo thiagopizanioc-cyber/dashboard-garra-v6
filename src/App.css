@@ -938,3 +938,93 @@ button,select,input{font-family:var(--font);}
 /* Light theme photo-mgr tweaks */
 [data-theme="light"] .photo-mgr { background: #fff; }
 [data-theme="light"] .person-card-avatar { background: #f0f0f5; }
+
+/* ===== PÓDIO 3D APRIMORADO ===== */
+.podium-platform {
+  position: relative;
+  transform-style: preserve-3d;
+  border-radius: 12px 12px 4px 4px !important;
+}
+
+/* Face frontal iluminada */
+.podium-platform::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+/* Sombra lateral direita — simula profundidade */
+.podium-platform::after {
+  content: '';
+  position: absolute;
+  top: 6px; right: -8px;
+  width: 8px; height: calc(100% - 6px);
+  background: rgba(0,0,0,0.4);
+  transform: skewY(-1deg);
+  border-radius: 0 4px 4px 0;
+  z-index: -1;
+}
+
+/* Base inferior do pódio — simula chão */
+.podium-slot::after {
+  content: '';
+  display: block;
+  width: 100%; height: 14px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 0 0 50% 50% / 0 0 6px 6px;
+  margin-top: -2px;
+  filter: blur(4px);
+}
+
+/* Heights 3D mais dramáticos */
+.podium-pos-1 .podium-platform { height: 140px !important; }
+.podium-pos-2 .podium-platform { height: 95px  !important; }
+.podium-pos-3 .podium-platform { height: 70px  !important; }
+
+/* Borda superior brilhante */
+.podium-pos-1 .podium-platform { border-top-width: 3px !important; }
+.podium-pos-2 .podium-platform { border-top-width: 2px !important; }
+.podium-pos-3 .podium-platform { border-top-width: 2px !important; }
+
+/* Efeito de reflexo no chão */
+.podium-stage::after {
+  content: '';
+  position: absolute;
+  bottom: -20px; left: 5%; right: 5%;
+  height: 30px;
+  background: radial-gradient(ellipse at center,
+    rgba(100,150,255,0.15) 0%, transparent 70%);
+  filter: blur(8px);
+  border-radius: 50%;
+}
+
+/* Neon rings animados */
+@keyframes neonPulse {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 0.7; }
+}
+.neon-ring {
+  animation: neonPulse 3s ease-in-out infinite;
+}
+.nr-2 { animation-delay: 1s; }
+.nr-3 { animation-delay: 2s; }
+
+/* Stars twinkle */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+.podium-stars {
+  animation: twinkle 4s ease-in-out infinite;
+}
+
+/* photo-mgr-section-title melhorado */
+.photo-mgr-section-title {
+  font-size: 13px !important;
+  color: var(--gold) !important;
+  border-bottom-color: var(--gold-dim) !important;
+  margin-bottom: 12px !important;
+}

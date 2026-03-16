@@ -1,6 +1,16 @@
 import { useState, useMemo, useRef } from 'react';
 import { consolidar, fmt } from '../utils/index';
-import { usePhotos, resizeAndStore, getPrizeData, savePrizeData } from '../hooks/usePhotos';
+import { resizeAndStore } from '../hooks/usePhotos';
+
+// Prize storage com categoria
+const PRIZE_KEY = (cat, pos) => `gprize_${cat}_${pos}`;
+function getPrize(cat, pos) {
+  try { return JSON.parse(localStorage.getItem(PRIZE_KEY(cat,pos))) || { img:null, txt:'', enabled:false }; }
+  catch { return { img:null, txt:'', enabled:false }; }
+}
+function savePrize(cat, pos, data) {
+  try { localStorage.setItem(PRIZE_KEY(cat,pos), JSON.stringify(data)); } catch(_) {}
+}
 
 // ---------- helpers ----------
 function buildRanking(type, corretores) {
@@ -148,18 +158,23 @@ function PodiumSlot({ item, pos, editMode, getPhoto, savePhoto, prize, onPrizeCh
 }
 
 // ---------- Main Component ----------
-export function P6_Ranking({ data }) {
+export function P6_Ranking({ data, getPhoto, savePhoto }) {
   const { corretores } = data;
-  const { getPhoto, savePhoto } = usePhotos();
   const [category, setCategory] = useState('corretores');
   const [editMode, setEditMode] = useState(false);
   const [showPhotoMgr, setShowPhotoMgr] = useState(false);
-  const [prizes, setPrizes] = useState(()=>({ 1:getPrizeData(1), 2:getPrizeData(2), 3:getPrizeData(3) }));
+  // Prêmios separados por categoria
+  const [prizes, setPrizes] = useState(() => ({
+    corretores: { 1:getPrize('corretores',1), 2:getPrize('corretores',2), 3:getPrize('corretores',3) },
+    gerentes:   { 1:getPrize('gerentes',1),   2:getPrize('gerentes',2),   3:getPrize('gerentes',3) },
+    supers:     { 1:getPrize('supers',1),      2:getPrize('supers',2),     3:getPrize('supers',3) },
+  }));
 
   function handlePrizeChange(pos, d) {
-    savePrizeData(pos, d);
-    setPrizes(p => ({ ...p, [pos]: d }));
+    savePrize(category, pos, d);
+    setPrizes(p => ({ ...p, [category]: { ...p[category], [pos]: d } }));
   }
+  const currentPrizes = prizes[category];
 
   const ranking = useMemo(()=>buildRanking(category, corretores), [category, corretores]);
   // Podium visual order: 2nd (left) | 1st (center) | 3rd (right)
@@ -224,7 +239,7 @@ export function P6_Ranking({ data }) {
           {slotOrder.map(({item,pos})=>(
             <PodiumSlot key={pos} item={item} pos={pos}
               editMode={editMode} getPhoto={getPhoto} savePhoto={savePhoto}
-              prize={prizes[pos]} onPrizeChange={handlePrizeChange}/>
+              prize={currentPrizes[pos]} onPrizeChange={handlePrizeChange}/>
           ))}
         </div>
         {/* Base plate */}

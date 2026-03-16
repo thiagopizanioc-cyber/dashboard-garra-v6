@@ -63,10 +63,31 @@ export function useMetricas() {
       const { data: rows } = Papa.parse(txt, { skipEmptyLines: true });
       if (rows.length < 3) throw new Error('Dados insuficientes na planilha.');
 
-      const media      = mapRow(rows[1]);
       const corretores = rows.slice(2)
         .filter(r => r[6] && String(r[6]).trim())
         .map(mapRow);
+
+      // Calcula média real dos corretores com dados (resolve semáforo zerado no piloto)
+      const ativos = corretores.filter(c => c.diasTrabalhados > 0);
+      const mediaBase = mapRow(rows[1]);
+      const media = ativos.length > 0 ? (() => {
+        const avg = fn => ativos.reduce((s,c) => s + fn(c), 0) / ativos.length;
+        return {
+          ...mediaBase,
+          diasTrabalhados: avg(c=>c.diasTrabalhados), folgas: avg(c=>c.folgas),
+          antes20h: avg(c=>c.antes20h), ate00h: avg(c=>c.ate00h),
+          retroativo: avg(c=>c.retroativo), streak: avg(c=>c.streak),
+          leads: avg(c=>c.leads), tempoDiscador: avg(c=>c.tempoDiscador),
+          repiks: avg(c=>c.repiks), agendForm1: avg(c=>c.agendForm1),
+          agendForm2: avg(c=>c.agendForm2), visitasForm1: avg(c=>c.visitasForm1),
+          visitasForm3: avg(c=>c.visitasForm3), propostas: avg(c=>c.propostas),
+          preVendas: avg(c=>c.preVendas), noShow: avg(c=>c.noShow),
+          taxaLeadAgend: avg(c=>c.taxaLeadAgend), taxaAgendVisita: avg(c=>c.taxaAgendVisita),
+          taxaVisitaConv: avg(c=>c.taxaVisitaConv), visitasComGerente: avg(c=>c.visitasComGerente),
+          taxaPartGerente: avg(c=>c.taxaPartGerente), taxaConvGerente: avg(c=>c.taxaConvGerente),
+          sicaqQtd: avg(c=>c.sicaqQtd), sicaqPerc: avg(c=>c.sicaqPerc),
+        };
+      })() : mediaBase;
 
       const supers   = [...new Set(corretores.map(c=>c.superintendente))].filter(Boolean).sort();
       const gerentes = [...new Set(corretores.map(c=>c.gerente))].filter(Boolean).sort();

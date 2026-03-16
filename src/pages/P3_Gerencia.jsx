@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { KpiCard, Card, AlertaBanner, Semaforo, FunilBar, ScoreRing, PersonCard } from '../components/Shared';
+import { RelatorioGrupoModal } from '../components/RelatorioGrupoModal';
 import { fmt, consolidar, semaforo, semaforoInfo, pontosDeAtencao, statusCorretor, topCanais } from '../utils/index';
 
 const METRICAS_COLS = [
@@ -102,6 +103,7 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPho
   const { corretores, gerentes, media } = data;
   const [selected, setSelected] = useState(target?.nome || gerentes[0] || '');
   const [modalCorretor, setModalCorretor] = useState(null);
+  const [showRelatorio, setShowRelatorio] = useState(false);
 
   const listaGerente = corretores.filter(c=>c.gerente===selected);
   const cons = consolidar(listaGerente);
@@ -117,10 +119,15 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPho
             <div className="page-sub">Diagnóstico da equipe · Clique num corretor para detalhes rápidos</div>
           </div>
         </div>
-        <select className="select-hero" value={selected}
-          onChange={e=>setSelected(e.target.value)}>
-          {gerentes.map(g=><option key={g} value={g}>{g}</option>)}
-        </select>
+        <div style={{display:'flex',gap:10,alignItems:'center'}}>
+          <button className="btn-relatorio" onClick={()=>setShowRelatorio(true)}>
+            📄 Gerar Relatório
+          </button>
+          <select className="select-hero" value={selected}
+            onChange={e=>setSelected(e.target.value)}>
+            {gerentes.map(g=><option key={g} value={g}>{g}</option>)}
+          </select>
+        </div>
       </div>
 
       {cons && (
@@ -207,6 +214,16 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPho
             setPage('corretor');
             setModalCorretor(null);
           }}
+        />
+      )}
+
+      {showRelatorio && (
+        <RelatorioGrupoModal
+          tipo="Gerência"
+          nome={selected}
+          lista={listaGerente}
+          getPhoto={getPhoto}
+          onClose={()=>setShowRelatorio(false)}
         />
       )}
     </div>

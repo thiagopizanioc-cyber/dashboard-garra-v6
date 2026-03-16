@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { KpiCard, Card, FunilBar, AlertaBanner, Semaforo, PersonCard } from '../components/Shared';
+import { RelatorioGrupoModal } from '../components/RelatorioGrupoModal';
 import { fmt, consolidar, semaforo, pontosDeAtencao } from '../utils/index';
 
 export function P2_Superintendencia({ data, target, setTarget, setPage, getPhoto }) {
   const { corretores, supers, media } = data;
   const [selected, setSelected] = useState(target?.nome || supers[0] || '');
+  const [showRelatorio, setShowRelatorio] = useState(false);
 
   const listaSuper = corretores.filter(c => c.superintendente === selected);
   const cons = consolidar(listaSuper);
@@ -35,9 +37,14 @@ export function P2_Superintendencia({ data, target, setTarget, setPage, getPhoto
             <div className="page-sub">Raio-X da equipe e das gerências</div>
           </div>
         </div>
-        <select className="select-hero" value={selected} onChange={e => setSelected(e.target.value)}>
-          {supers.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <div style={{display:'flex',gap:10,alignItems:'center'}}>
+          <button className="btn-relatorio" onClick={()=>setShowRelatorio(true)}>
+            📄 Gerar Relatório
+          </button>
+          <select className="select-hero" value={selected} onChange={e => setSelected(e.target.value)}>
+            {supers.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
       </div>
 
       {!cons ? <p className="empty">Sem dados para esta superintendência.</p> : <>
@@ -142,6 +149,16 @@ export function P2_Superintendencia({ data, target, setTarget, setPage, getPhoto
           </div>
         </Card>
       </>}
+
+      {showRelatorio && (
+        <RelatorioGrupoModal
+          tipo="Superintendência"
+          nome={selected}
+          lista={listaSuper}
+          getPhoto={getPhoto}
+          onClose={() => setShowRelatorio(false)}
+        />
+      )}
     </div>
   );
 }
