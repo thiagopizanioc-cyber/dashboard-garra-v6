@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KpiCard, Card, AlertaBanner, Semaforo, FunilBar, ScoreRing, PersonCard } from '../components/Shared';
 import { RelatorioGrupoModal } from '../components/RelatorioGrupoModal';
+import { PainelRastreabilidade } from '../components/VendasExternas';
 import { fmt, consolidar, semaforo, semaforoInfo, pontosDeAtencao, statusCorretor, topCanais } from '../utils/index';
 
 const METRICAS_COLS = [
@@ -9,7 +10,9 @@ const METRICAS_COLS = [
   { key:'leads',           label:'Leads', pct:false },
   { key:'agendForm2',      label:'Agend.', pct:false },
   { key:'visitasForm3',    label:'Visitas', pct:false },
+  { key:'propostas',       label:'Proposta', pct:false },
   { key:'preVendas',       label:'Pré-Venda', pct:false },
+  { key:'vendaSV',         label:'Venda SV', pct:false },
   { key:'taxaLeadAgend',   label:'L→Ag', pct:true },
   { key:'taxaVisitaConv',  label:'Conv.', pct:true },
   { key:'noShow',          label:'No-Show', pct:true, inv:true },
@@ -99,7 +102,8 @@ function CorretorModal({ c, media, controle, onClose, onViewFull }) {
   );
 }
 
-export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPhoto }) {
+export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPhoto,
+                              vendas, alertasRastreabilidade }) {
   const { corretores, gerentes, media } = data;
   const [selected, setSelected] = useState(target?.nome || gerentes[0] || '');
   const [modalCorretor, setModalCorretor] = useState(null);
@@ -108,6 +112,16 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPho
   const listaGerente = corretores.filter(c=>c.gerente===selected);
   const cons = consolidar(listaGerente);
   const alertas = pontosDeAtencao(listaGerente, media);
+
+  // Alertas de rastreabilidade filtrados para esta gerência
+  const alertasGerencia = alertasRastreabilidade?.filter(a =>
+    listaGerente.some(c => c.corretor === a.corretor)
+  ) || [];
+
+  // Vendas SV externas para esta gerência
+  const svExt = vendas
+    ? listaGerente.reduce((s,c) => s+(vendas[c.corretor]?.vendaSV||0), 0)
+    : null;
 
   return (
     <div className="page">
@@ -131,16 +145,18 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPho
       </div>
 
       {cons && (
-        <div className="kpi-grid kpi-grid-5">
-          <KpiCard icon="👥" label="Corretores"   value={`${cons.ativos}/${cons.total}`} sub={`${cons.total-cons.ativos} sem dados`}/>
-          <KpiCard icon="📞" label="Leads"         value={cons.leads}/>
-          <KpiCard icon="📅" label="Agendamentos"  value={cons.agend}    sub={fmt.pct(cons.txLeadAgend)} gold/>
-          <KpiCard icon="🏠" label="Visitas"       value={cons.visitas}  sub={fmt.pct(cons.txAgendVisita)} gold/>
-          <KpiCard icon="🏆" label="Pré-Vendas"    value={cons.preVendas} sub={`Conv. ${fmt.pct(cons.txConv)}`} gold/>
+        <div className="kpi-grid kpi-grid-6">
+          <KpiCard icon="👥" label="Corretores"    value={`${cons.ativos}/${cons.total}`} sub={`${cons.total-cons.ativos} sem dados`}/>
+          <KpiCard icon="📞" label="Leads"          value={cons.leads}/>
+          <KpiCard icon="📅" label="Agendamentos"   value={cons.agend}    sub={fmt.pct(cons.txLeadAgend)} gold/>
+          <KpiCard icon="🏠" label="Visitas"        value={cons.visitas}  sub={fmt.pct(cons.txAgendVisita)} gold/>
+          <KpiCard icon="📝" label="Proposta"       value={cons.propostas||0} sub="Intenção de compra"/>
+          <KpiCard icon="🏆" label="Pré-Venda"      value={cons.preVendas} sub={`Venda SV: ${svExt !== null ? svExt : (cons.vendaSV||0)}`} gold/>
         </div>
       )}
 
       <AlertaBanner alertas={alertas}/>
+      <PainelRastreabilidade alertas={alertasGerencia}/>
 
       {/* Tabela de corretores com semáforos */}
       <Card title={`🔍 Corretores — ${selected} · Semáforo vs média do time`}>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, FunilBar, ScoreRing, MiniBar, PersonCard } from '../components/Shared';
+import { PainelRastreabilidade } from '../components/VendasExternas';
 import { RelatorioModal } from '../components/RelatorioModal';
 import { fmt, statusCorretor, topCanais } from '../utils/index';
 
@@ -86,15 +87,23 @@ function AtividadeBlock({ c, media }) {
   );
 }
 
-function PerformanceBlock({ c, media }) {
+function PerformanceBlock({ c, media, vendas }) {
+  const svExt = vendas?.[c.corretor]?.vendaSV ?? null;
   return (
     <Card title="🏆 Funil Pessoal">
       <FunilBar steps={[
-        {label:'Leads',     value:c.leads,        color:'#f59e0b'},
-        {label:'Agend.',    value:c.agendForm2,   color:'#fb923c'},
-        {label:'Visitas',   value:c.visitasForm3, color:'#f97316'},
-        {label:'Pré-Venda', value:c.preVendas,    color:'#ea580c'},
+        {label:'Leads',             value:c.leads,        color:'#f59e0b'},
+        {label:'Agend.',            value:c.agendForm2,   color:'#fb923c'},
+        {label:'Visitas',           value:c.visitasForm3, color:'#f97316'},
+        {label:'Proposta Assinada', value:c.propostas||0, color:'#ef4444'},
+        {label:'Pré-Venda',         value:c.preVendas,    color:'#a855f7'},
+        {label:'Venda SV',          value:svExt !== null ? svExt : (c.vendaSV||0), color:'#22c55e'},
       ]}/>
+      {svExt === null && (
+        <div className="funil-hint" style={{marginTop:6}}>
+          💡 Venda SV via Form 3 · Sincronize Power BI para dados do CRM
+        </div>
+      )}
       <div className="taxas-grid">
         <div className="taxa-item">
           <div className="taxa-val">{fmt.pct(c.taxaLeadAgend)}</div>
@@ -192,7 +201,8 @@ function GerenteBlock({ c }) {
   );
 }
 
-export function P4_Corretor({ data, controle, target, setPage, media, getPhoto }) {
+export function P4_Corretor({ data, controle, target, setPage, media, getPhoto,
+                              vendas, alertasRastreabilidade, savePhoto }) {
   const { corretores, supers, gerentes } = data;
 
   const [selectedSuper, setSelectedSuper] = useState(target?.data?.superintendente || supers[0] || '');
@@ -248,12 +258,10 @@ export function P4_Corretor({ data, controle, target, setPage, media, getPhoto }
           {/* Cabeçalho do corretor */}
           <div className="cor-header-card">
             <div className="cor-header-left">
-              <div className="cor-header-avatar-wrap">
-                <PersonCard nome={corretor.corretor} size={72} getPhoto={getPhoto}/>
-                <div className="cor-score-ring">
-                  <ScoreRing score={st.score}/>
-                </div>
-              </div>
+              {/* Foto do corretor */}
+              <PersonCard nome={corretor.corretor} size={72} getPhoto={getPhoto}/>
+              {/* Score isolado ao lado */}
+              <ScoreRing score={st.score}/>
               <div>
                 <div className="cor-nome" translate="no">{corretor.corretor}</div>
                 <div className="cor-sub" translate="no">{corretor.gerente} · {corretor.superintendente}</div>
@@ -268,12 +276,17 @@ export function P4_Corretor({ data, controle, target, setPage, media, getPhoto }
             </div>
           </div>
 
+          {/* Alerta rastreabilidade individual */}
+          {alertasRastreabilidade?.filter(a=>a.corretor===corretor.corretor).length > 0 && (
+            <PainelRastreabilidade alertas={alertasRastreabilidade.filter(a=>a.corretor===corretor.corretor)}/>
+          )}
+
           {/* Blocos */}
           <div className="row-2">
             <DisciplinaBlock c={corretor} controle={controle}/>
             <AtividadeBlock  c={corretor} media={media}/>
           </div>
-          <PerformanceBlock c={corretor} media={media}/>
+          <PerformanceBlock c={corretor} media={media} vendas={vendas}/>
           <div className="row-2">
             <CanaisBlock  c={corretor}/>
             <GerenteBlock c={corretor}/>

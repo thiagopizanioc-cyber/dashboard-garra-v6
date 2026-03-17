@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRawData } from './hooks/useRawData';
 import { usePhotos } from './hooks/usePhotos';
+import { useVendasExternas, verificarRastreabilidade } from './hooks/useVendasExternas';
 import { calcularData, calcularPeriodoAnterior } from './utils/calcEngine';
 import { Nav } from './components/Nav';
 import { DateRangePicker } from './components/DateRangePicker';
@@ -71,6 +72,8 @@ function detectarPeriodoInicial(raw) {
 export default function App() {
   const { raw, loading, error, refetch, lastUpdate } = useRawData();
   const { getPhoto, savePhoto } = usePhotos();
+  const { vendas, loading: loadVendas, error: errVendas, lastFetch: lastVendas,
+          fetchVendas } = useVendasExternas();
 
   const [page, setPage]     = useState('diretoria');
   const [target, setTarget] = useState(null);
@@ -137,6 +140,14 @@ export default function App() {
     return porCorretor;
   }, [raw]);
 
+  // Alertas de rastreabilidade: venda no Power BI sem Form preenchido
+  const alertasRastreabilidade = useMemo(() => {
+    return verificarRastreabilidade(vendas, raw);
+  }, [vendas, raw]);
+
+  const vendasProps = { vendas, loadVendas, errVendas, lastVendas, fetchVendas,
+                        alertasRastreabilidade };
+
   function handlePeriodoChange(ini, fim) {
     setCalculating(true);
     setTimeout(() => {
@@ -151,7 +162,7 @@ export default function App() {
 
   const renderPage = () => {
     const props = { data, controle, target, setTarget, setPage, getPhoto, savePhoto,
-                    dataPeriodoAnterior };
+                    dataPeriodoAnterior, ...vendasProps };
     switch(page) {
       case 'diretoria': return <P1_Diretoria {...props}/>;
       case 'super':     return <P2_Superintendencia {...props}/>;

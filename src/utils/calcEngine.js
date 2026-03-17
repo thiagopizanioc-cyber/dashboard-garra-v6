@@ -75,7 +75,7 @@ function calcularCorretor(raw, nome, ini, fim) {
     leads: 0, tempoDiscador: 0, repiks: 0,
     agendForm1: 0, agendForm2: 0, agendadosParaOPeriodo: 0, sicaqAprovados: 0,
     visitasForm1: 0, visitasForm3: 0,
-    propostas: 0, preVendas: 0, conversoesTotal: 0,
+    propostas: 0, preVendas: 0, vendaSV: 0, conversoesTotal: 0,
     visitasComGerente: 0, conversoesComGerente: 0,
     canaisAg: {}, canaisVs: {},
   };
@@ -116,12 +116,20 @@ function calcularCorretor(raw, nome, ini, fim) {
     m.visitasForm3++;
 
     const res = r.resultado;
-    const conv = res.includes('ASSINADA') || res.includes('PROPOSTA') ||
-                 res.includes('PRÉ') || res.includes('PRE');
+    // Detecta Venda SV (mais específico primeiro)
+    const isVendaSV   = res.includes('SV') || res.includes('VENDA SV') || res.includes('SECRETARIA');
+    // Detecta Pré-Venda
+    const isPreVenda  = !isVendaSV && (res.includes('PRÉ') || res.includes('PRE'));
+    // Detecta Proposta Assinada
+    const isProposta  = !isVendaSV && !isPreVenda &&
+                        (res.includes('PROPOSTA') || res.includes('ASSINADA') || res.includes('INTEN'));
+    const conv = isVendaSV || isPreVenda || isProposta;
+
     if (conv) {
       m.conversoesTotal++;
-      if (res.includes('PROPOSTA')) m.propostas++;
-      if (res.includes('PRÉ') || res.includes('PRE')) m.preVendas++;
+      if (isProposta) m.propostas++;
+      if (isPreVenda) m.preVendas++;
+      if (isVendaSV)  m.vendaSV++;
       const key = normalizarCanal(r.canal);
       m.canaisVs[key] = (m.canaisVs[key]||0) + 1;
     }
@@ -260,7 +268,7 @@ export function calcularData(raw, ini, fim) {
         agendForm1: m.agendForm1, agendForm2: m.agendForm2,
         divAgend: m.divAgend, visitasForm1: m.visitasForm1,
         visitasForm3: m.visitasForm3, divVisitas: m.divVisitas,
-        propostas: m.propostas, preVendas: m.preVendas,
+        propostas: m.propostas, preVendas: m.preVendas, vendaSV: m.vendaSV,
         // Taxas
         noShow: m.noShow, taxaLeadAgend: m.taxaLeadAgend,
         taxaAgendVisita: m.taxaAgendVisita, taxaVisitaConv: m.taxaVisitaConv,
@@ -297,7 +305,7 @@ export function calcularData(raw, ini, fim) {
     repiks: avg(c=>c.repiks), agendForm1: avg(c=>c.agendForm1),
     agendForm2: avg(c=>c.agendForm2), visitasForm1: avg(c=>c.visitasForm1),
     visitasForm3: avg(c=>c.visitasForm3), propostas: avg(c=>c.propostas),
-    preVendas: avg(c=>c.preVendas), noShow: avg(c=>c.noShow),
+    preVendas: avg(c=>c.preVendas), vendaSV: avg(c=>c.vendaSV), noShow: avg(c=>c.noShow),
     taxaLeadAgend: avg(c=>c.taxaLeadAgend), taxaAgendVisita: avg(c=>c.taxaAgendVisita),
     taxaVisitaConv: avg(c=>c.taxaVisitaConv), visitasComGerente: avg(c=>c.visitasComGerente),
     taxaPartGerente: avg(c=>c.taxaPartGerente), taxaConvGerente: avg(c=>c.taxaConvGerente),

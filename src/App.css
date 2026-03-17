@@ -1091,3 +1091,71 @@ button,select,input{font-family:var(--font);}
   .drp-inputs  { flex-wrap: wrap; }
   .drp-input   { width: 130px; }
 }
+
+/* ===== POWER BI / VENDAS EXTERNAS ===== */
+.sync-vendas-wrap {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.btn-sync-vendas {
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text2); padding: 7px 14px; border-radius: 8px;
+  cursor: pointer; font-size: 12px; font-family: var(--font);
+  white-space: nowrap; transition: all .15s;
+}
+.btn-sync-vendas:hover { border-color: #22c55e; color: #22c55e; }
+.btn-sync-vendas:disabled { opacity: .5; cursor: default; }
+.sync-vendas-ts  { font-size: 11px; color: var(--text3); }
+.sync-vendas-erro { font-size: 11px; color: var(--danger); max-width: 300px; }
+
+/* Painel rastreabilidade */
+.rastreabilidade-wrap {
+  background: #450a0a; border: 1px solid #b91c1c;
+  border-radius: 10px; padding: 14px 18px; margin-bottom: 14px;
+}
+.rastreabilidade-title { font-size: 13px; font-weight: 600; color: #fca5a5; margin-bottom: 10px; }
+.rastro-item { background: rgba(185,28,28,.15); border-radius: 7px; padding: 10px 14px; margin-bottom: 8px; }
+.rastro-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 5px; }
+.rastro-nome { font-weight: 600; color: #fca5a5; font-size: 13px; }
+.rastro-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.rastro-badge { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.rastro-badge.sv   { background: #14532d; color: #86efac; }
+.rastro-badge.pre  { background: #3b0764; color: #d8b4fe; }
+.rastro-badge.prop { background: #450a0a; color: #fca5a5; }
+.rastro-msg { font-size: 12px; color: var(--text3); }
+
+/* Grid Power BI */
+.pbi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 4px 0; }
+.pbi-item { text-align: center; padding: 14px 10px; background: var(--bg3); border-radius: 10px; }
+.pbi-destaque { border: 1px solid #22c55e33; }
+.pbi-val { font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+.pbi-lbl { font-size: 13px; font-weight: 600; color: var(--text2); }
+.pbi-desc { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+/* Funil hint */
+.funil-hint { font-size: 12px; color: var(--text3); text-align: center; margin-top: 10px; }
+
+/* Células verdes na tabela */
+.val-green { color: #22c55e; font-weight: 600; }
+
+/* Vendas externas na tabela */
+.vendas-ext-row { display: flex; gap: 16px; padding: 6px 0; }
+.vendas-ext-item { text-align: center; min-width: 60px; }
+.vendas-ext-val  { font-size: 24px; font-weight: 700; line-height: 1; }
+.vendas-ext-lbl  { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.vendas-ext-destaque { padding: 6px 10px; background: rgba(34,197,94,.08); border-radius: 8px; }
+.vendas-ext-hint { font-size: 12px; color: var(--text3); padding: 8px 0; }
+
+/* Semáforo de estágios no funil */
+.funil-step { margin-bottom: 10px; }
+.funil-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.funil-label { font-size: 13px; color: var(--text2); min-width: 130px; }
+.funil-val   { font-size: 15px; font-weight: 700; min-width: 40px; }
+.funil-taxa  { font-size: 12px; color: var(--text3); }
+.funil-hint  { font-size: 11px; color: var(--text3); font-style: italic; }
+.funil-bg    { background: var(--bg3); border-radius: 4px; height: 8px; overflow: hidden; }
+.funil-fill  { height: 100%; border-radius: 4px; transition: width .4s; }
+
+@media (max-width: 768px) {
+  .pbi-grid { grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .pbi-val  { font-size: 24px; }
+}
