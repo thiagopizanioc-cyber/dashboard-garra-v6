@@ -1028,3 +1028,66 @@ button,select,input{font-family:var(--font);}
   border-bottom-color: var(--gold-dim) !important;
   margin-bottom: 12px !important;
 }
+
+/* ===== BARRA DE PERÍODO ===== */
+.periodo-bar {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 12px; padding: 12px 24px 0;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+}
+.periodo-info {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; flex-wrap: wrap;
+}
+.periodo-label { color: var(--text2); font-weight: 500; }
+.periodo-dias  { color: var(--text3); }
+.periodo-ant   { color: var(--gold-dim); font-size: 11px; }
+
+/* ===== DATE RANGE PICKER ===== */
+.drp-wrap {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.drp-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.drp-preset {
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text2); padding: 4px 10px; border-radius: 20px;
+  cursor: pointer; font-size: 11px; font-family: var(--font);
+  transition: all .15s;
+}
+.drp-preset:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+.drp-inputs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.drp-input {
+  background: var(--bg2); border: 1px solid var(--border2);
+  color: var(--text); padding: 6px 10px; border-radius: 7px;
+  font-size: 13px; font-family: var(--font);
+  outline: none;
+}
+.drp-input:focus { border-color: var(--gold); }
+.drp-sep { font-size: 12px; color: var(--text3); }
+.drp-btn {
+  background: var(--gold); color: #000; font-weight: 700;
+  font-size: 13px; padding: 7px 16px; border: none;
+  border-radius: 7px; cursor: pointer; white-space: nowrap;
+}
+.drp-btn:hover  { filter: brightness(1.1); }
+.drp-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ===== OVERLAY CALCULANDO ===== */
+.calc-overlay {
+  display: flex; align-items: center; justify-content: center;
+  height: 300px; font-size: 16px; color: var(--text2);
+  animation: pulse 1.2s infinite;
+}
+
+/* CONTENT agora tem padding-top menor pois a periodo-bar já tem padding */
+.content { padding-top: 0 !important; }
+.page { padding-top: 20px; }
+
+/* Mobile */
+@media (max-width: 768px) {
+  .periodo-bar { padding: 10px 14px 0; }
+  .drp-inputs  { flex-wrap: wrap; }
+  .drp-input   { width: 130px; }
+}
