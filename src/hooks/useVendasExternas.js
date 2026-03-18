@@ -222,17 +222,55 @@ export function verificarRastreabilidade(vendas, raw) {
 }
 
 /**
+ * Converte string de número para float — suporta formatos:
+ *   "16.210.000,00"  → 16210000   (BR com ponto milhar, vírgula decimal)
+ *   "16,210,000.00"  → 16210000   (US com vírgula milhar, ponto decimal)
+ *   "16210000"       → 16210000   (sem separadores)
+ *   "R$ 16.210.000,00" → 16210000 (com prefixo monetário)
+ */
+function parsearNumero(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'number') return v;
+  let s = String(v).trim();
+  // Remove tudo que não é dígito, vírgula ou ponto
+  s = s.replace(/[^0-9.,]/g, '');
+  if (!s) return 0;
+
+  const temVirgula = s.includes(',');
+  const temPonto   = s.includes('.');
+
+  if (temVirgula && temPonto) {
+    // Descobre qual é o separador decimal (o último da string)
+    const ultVirgula = s.lastIndexOf(',');
+    const ultPonto   = s.lastIndexOf('.');
+    if (ultVirgula > ultPonto) {
+      // BR: 16.210.000,00 — ponto é milhar, vírgula é decimal
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // US: 16,210,000.00 — vírgula é milhar, ponto é decimal
+      s = s.replace(/,/g, '');
+    }
+  } else if (temVirgula && !temPonto) {
+    // Só vírgula: assume decimal BR (ex: "16000,50")
+    s = s.replace(',', '.');
+  }
+  // Só ponto ou sem separador: deixa como está
+
+  return parseFloat(s) || 0;
+}
+
+/**
  * Parseia PBI_RESUMO — retorna { vgvTotal, recebimento, ultimaAtualizacao }
  */
 function parsearResumo(rows) {
   if (!rows || rows.length < 2) return null;
   const result = { vgvTotal: 0, recebimento: 0, ultimaAtualizacao: '' };
-  for (let i = 1; i < rows.length; i++) {
+  for (let i = 0; i < rows.length; i++) {
     const metrica = String(rows[i][0] || '').toUpperCase();
     const valor   = rows[i][1];
-    if (metrica.includes('VGV'))          result.vgvTotal      = parseFloat(String(valor).replace(/[^0-9.,]/g,'').replace(',','.')) || 0;
-    if (metrica.includes('RECEB'))        result.recebimento   = parseFloat(String(valor).replace(/[^0-9.,]/g,'').replace(',','.')) || 0;
-    if (metrica.includes('ATUALIZA'))     result.ultimaAtualizacao = String(valor || '');
+    if (metrica.includes('VGV'))      result.vgvTotal           = parsearNumero(valor);
+    if (metrica.includes('RECEB'))    result.recebimento        = parsearNumero(valor);
+    if (metrica.includes('ATUALIZA')) result.ultimaAtualizacao  = String(valor || '');
   }
   return result;
 }
