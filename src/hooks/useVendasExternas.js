@@ -80,20 +80,61 @@ function parsearVendas(rows) {
   return mapa;
 }
 
-// Parseia PBI_CORRETORES — retorna mapa { corretor → diasSemVender }
+/**
+ * Parseia PBI_CORRETORES — formato confirmado na planilha:
+ * Col A: data captura
+ * Col B: "P6_CORRETOR"
+ * Col C: linha bruta — "+100 dias | DIANA | 09/01/2025 | ATIVO | CONSULTOR DE VENDAS 2.0"
+ *
+ * Retorna mapa { NOME_CORRETOR → { diasSemVender, dataUltimaVenda, cargo } }
+ */
 function parsearCorretores(rows) {
   if (!rows || rows.length < 2) return {};
-  const headers = rows[0].map(h => String(h || '').toUpperCase().trim());
-  const colCorretor = acharColuna(headers, ['CORRETOR', 'VENDEDOR', 'NOME']);
-  const colDias     = acharColuna(headers, ['DIAS', 'D/', 'SEM VENDER', 'DIAS SEM']);
-  if (colCorretor === null) return {};
-
   const mapa = {};
-  for (let i = 1; i < rows.length; i++) {
-    const corretor = String(rows[i][colCorretor] || '').toUpperCase().trim();
-    if (!corretor) continue;
-    const dias = colDias !== null ? parseInt(rows[i][colDias]) || 0 : 0;
-    mapa[corretor] = dias;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+
+    // A aba PBI_CORRETORES pode ter formato GAS (col A=data, col B=label, col C=linha bruta)
+    // ou formato direto (linha bruta em col A)
+    let linhaBruta = '';
+    if (String(row[1] || '').includes('P6') || String(row[1] || '').includes('CORRETOR')) {
+      linhaBruta = String(row[2] || '');
+    } else if (String(row[0] || '').includes('dias')) {
+      linhaBruta = String(row[0] || '');
+    } else {
+      // Tenta col A direto (quando GAS já separou em colunas)
+      linhaBruta = row.join(' | ');
+    }
+
+    if (!linhaBruta || linhaBruta.length < 5) continue;
+
+    // Remove prefixos do Power BI
+    linhaBruta = linhaBruta
+      .replace('Row Selection | ', '')
+      .replace('Select Row | ', '')
+      .trim();
+
+    // Separa por " | "
+    const partes = linhaBruta.split(' | ').map(p => p.trim()).filter(Boolean);
+    if (partes.length < 2) continue;
+
+    // Extrai dias sem vender do primeiro campo: "+100 dias", "100 dias", "100"
+    const diasMatch = partes[0].match(/\d+/);
+    const diasSemVender = diasMatch ? parseInt(diasMatch[0]) : 0;
+
+    // Nome: segundo campo
+    const nome = partes[1]?.toUpperCase().trim();
+    if (!nome || nome.length < 2) continue;
+
+    // Data: terceiro campo (dd/mm/yyyy ou similar)
+    const dataRaw = partes[2] || '';
+    const dataUltimaVenda = dataRaw.match(/\d{2}\/\d{2}\/\d{4}/) ? dataRaw : '';
+
+    // Cargo: último campo
+    const cargo = partes[partes.length - 1] || '';
+
+    mapa[nome] = { diasSemVender, dataUltimaVenda, cargo };
   }
   return mapa;
 }

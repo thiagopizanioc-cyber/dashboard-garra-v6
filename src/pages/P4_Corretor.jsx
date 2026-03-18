@@ -4,6 +4,39 @@ import { PainelRastreabilidade } from '../components/VendasExternas';
 import { RelatorioModal } from '../components/RelatorioModal';
 import { fmt, statusCorretor, topCanais } from '../utils/index';
 
+function RankingCard({ title, corretores, metrica, format, cor, getPhoto, onSelect }) {
+  const top5 = [...corretores]
+    .filter(c => (c[metrica] || 0) > 0)
+    .sort((a, b) => (b[metrica] || 0) - (a[metrica] || 0))
+    .slice(0, 5);
+
+  const max = top5[0]?.[metrica] || 1;
+
+  return (
+    <Card title={title}>
+      {top5.length === 0 && (
+        <div className="empty" style={{padding:'12px 0'}}>Sem dados no período</div>
+      )}
+      {top5.map((c, i) => (
+        <div key={c.corretor} className="rank-row" onClick={() => onSelect(c.corretor)}>
+          <span className="rank-pos" style={{color: i === 0 ? '#f59e0b' : 'var(--text3)'}}>
+            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}º`}
+          </span>
+          <PersonCard nome={c.corretor} size={28} getPhoto={getPhoto}/>
+          <div className="rank-info">
+            <div className="rank-nome" translate="no">{c.corretor}</div>
+            <div className="rank-bar-bg">
+              <div className="rank-bar-fill"
+                style={{width: `${((c[metrica]||0)/max)*100}%`, background: cor}}/>
+            </div>
+          </div>
+          <span className="rank-val" style={{color: cor}}>{format(c[metrica] || 0)}</span>
+        </div>
+      ))}
+    </Card>
+  );
+}
+
 function DisciplinaBlock({ c, controle }) {
   const engaj = c.diasTrabalhados>0 ? (c.antes20h+c.ate00h)/c.diasTrabalhados : 0;
   const padroes = controle?.[c.corretor]?.padroes || [];
@@ -249,9 +282,61 @@ export function P4_Corretor({ data, controle, target, setPage, media, getPhoto,
       </div>
 
       {!corretor ? (
-        <div className="empty-state">
-          <div className="empty-icon">👤</div>
-          <div>Selecione um corretor para ver o diagnóstico completo</div>
+        <div className="rankings-grid">
+          <RankingCard
+            title="🏆 Venda SV"
+            corretores={corretores}
+            metrica="vendaSV"
+            format={v => v}
+            cor="#22c55e"
+            getPhoto={getPhoto}
+            onSelect={nome => setSelectedCor(nome)}
+          />
+          <RankingCard
+            title="⏳ Pré-Vendas"
+            corretores={corretores}
+            metrica="preVendas"
+            format={v => v}
+            cor="#a855f7"
+            getPhoto={getPhoto}
+            onSelect={nome => setSelectedCor(nome)}
+          />
+          <RankingCard
+            title="📝 Propostas Assinadas"
+            corretores={corretores}
+            metrica="propostas"
+            format={v => v}
+            cor="#ef4444"
+            getPhoto={getPhoto}
+            onSelect={nome => setSelectedCor(nome)}
+          />
+          <RankingCard
+            title="✅ Preenchimento em Dia"
+            corretores={corretores}
+            metrica="antes20h"
+            format={v => v + ' dias'}
+            cor="#f59e0b"
+            getPhoto={getPhoto}
+            onSelect={nome => setSelectedCor(nome)}
+          />
+          <RankingCard
+            title="🏠 Visitas Realizadas"
+            corretores={corretores}
+            metrica="visitasForm3"
+            format={v => v}
+            cor="#fb923c"
+            getPhoto={getPhoto}
+            onSelect={nome => setSelectedCor(nome)}
+          />
+          <RankingCard
+            title="📅 Agendamentos"
+            corretores={corretores}
+            metrica="agendForm2"
+            format={v => v}
+            cor="#38bdf8"
+            getPhoto={getPhoto}
+            onSelect={nome => setSelectedCor(nome)}
+          />
         </div>
       ) : (
         <>
@@ -266,17 +351,28 @@ export function P4_Corretor({ data, controle, target, setPage, media, getPhoto,
                 <div className="cor-nome" translate="no">{corretor.corretor}</div>
                 <div className="cor-sub" translate="no">{corretor.gerente} · {corretor.superintendente}</div>
                 <div className="cor-periodo">{corretor.dataInicio} a {corretor.dataFim} · {corretor.periodo} dias</div>
-                {/* Dias sem vender — vem do PBI_CORRETORES */}
-                {corretoresPBI?.[corretor.corretor] != null && (
-                  <div className="dias-sem-vender">
-                    {corretoresPBI[corretor.corretor] === 0
-                      ? <span className="dsv-ok">✅ Vendeu recentemente</span>
-                      : <span className="dsv-alerta" style={{color: corretoresPBI[corretor.corretor] > 14 ? '#f87171' : '#fbbf24'}}>
-                          ⏱ {corretoresPBI[corretor.corretor]} dias sem vender
+                {/* Dados do Power BI — dias sem vender, última venda, data início */}
+                {corretoresPBI?.[corretor.corretor] != null && (() => {
+                  const pbi = corretoresPBI[corretor.corretor];
+                  const dias = pbi.diasSemVender ?? pbi; // compatibilidade com formato antigo
+                  const diasNum = typeof dias === 'object' ? dias.diasSemVender : dias;
+                  const cor = diasNum === 0 ? '#34d399' : diasNum > 14 ? '#f87171' : '#fbbf24';
+                  return (
+                    <div className="pbi-corretor-info">
+                      <span className="pbi-tag" style={{color: cor}}>
+                        ⏱ {diasNum === 0 ? 'Vendeu recentemente' : `${diasNum} dias sem vender`}
+                      </span>
+                      {pbi.dataUltimaVenda && (
+                        <span className="pbi-tag">
+                          🏆 Última venda: {pbi.dataUltimaVenda}
                         </span>
-                    }
-                  </div>
-                )}
+                      )}
+                      {pbi.cargo && (
+                        <span className="pbi-tag pbi-tag-cargo">{pbi.cargo}</span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <div style={{display:'flex',gap:10,alignItems:'center'}}>
