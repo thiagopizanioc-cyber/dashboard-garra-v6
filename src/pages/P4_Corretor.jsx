@@ -354,18 +354,18 @@ export function P4_Corretor({ data, controle, target, setPage, media, getPhoto,
                 {/* Dados do Power BI — dias sem vender, última venda, data início */}
                 {corretoresPBI?.[corretor.corretor] != null && (() => {
                   const pbi = corretoresPBI[corretor.corretor];
-                  const dias = pbi.diasSemVender ?? pbi; // compatibilidade com formato antigo
-                  const diasNum = typeof dias === 'object' ? dias.diasSemVender : dias;
-                  const cor = diasNum === 0 ? '#34d399' : diasNum > 14 ? '#f87171' : '#fbbf24';
+                  const dias = pbi.diasSemVender ?? 0;
+                  const cor = dias === 0 ? '#34d399' : dias > 14 ? '#f87171' : '#fbbf24';
                   return (
                     <div className="pbi-corretor-info">
                       <span className="pbi-tag" style={{color: cor}}>
-                        ⏱ {diasNum === 0 ? 'Vendeu recentemente' : `${diasNum} dias sem vender`}
+                        ⏱ {dias === 0 ? 'Vendeu recentemente' : `${dias} dias sem vender`}
                       </span>
                       {pbi.dataUltimaVenda && (
-                        <span className="pbi-tag">
-                          🏆 Última venda: {pbi.dataUltimaVenda}
-                        </span>
+                        <span className="pbi-tag">🏆 Última venda: {pbi.dataUltimaVenda}</span>
+                      )}
+                      {pbi.dataEntrada && (
+                        <span className="pbi-tag">📅 Na empresa desde: {pbi.dataEntrada}</span>
                       )}
                       {pbi.cargo && (
                         <span className="pbi-tag pbi-tag-cargo">{pbi.cargo}</span>

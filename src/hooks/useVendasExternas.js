@@ -81,12 +81,13 @@ function parsearVendas(rows) {
 }
 
 /**
- * Parseia PBI_CORRETORES — formato confirmado na planilha:
- * Col A: data captura
- * Col B: "P6_CORRETOR"
- * Col C: linha bruta — "+100 dias | DIANA | 09/01/2025 | ATIVO | CONSULTOR DE VENDAS 2.0"
+ * Parseia PBI_CORRETORES — colunas confirmadas no screenshot da P6:
+ * FAIXA DE DIAS | APELIDO | ENTRADA | SITUAÇÃO | FUNÇÃO | GERENTE | SUPERINT. | DIRETOR | DATA ÚLTIMA VENDA | DIAS S/ VENDER
  *
- * Retorna mapa { NOME_CORRETOR → { diasSemVender, dataUltimaVenda, cargo } }
+ * Formato de cada linha no Sheets (GAS separou por " | "):
+ * "+100 dias | DIANA | 09/01/2025 | ATIVO | CONSULTOR DE VENDAS 2.0 | SCOTT | BETEL | LISBOA | 31/05/2025 | 291"
+ *
+ * Retorna mapa { NOME → { diasSemVender, dataEntrada, dataUltimaVenda, cargo, gerente, super_ } }
  */
 function parsearCorretores(rows) {
   if (!rows || rows.length < 2) return {};
@@ -95,46 +96,61 @@ function parsearCorretores(rows) {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
 
-    // A aba PBI_CORRETORES pode ter formato GAS (col A=data, col B=label, col C=linha bruta)
-    // ou formato direto (linha bruta em col A)
+    // Identifica a linha bruta — col C quando col B = "P6_CORRETOR" (formato GAS)
     let linhaBruta = '';
-    if (String(row[1] || '').includes('P6') || String(row[1] || '').includes('CORRETOR')) {
+    const colB = String(row[1] || '');
+    if (colB === 'P6_CORRETOR' || colB.includes('P6')) {
       linhaBruta = String(row[2] || '');
-    } else if (String(row[0] || '').includes('dias')) {
-      linhaBruta = String(row[0] || '');
     } else {
-      // Tenta col A direto (quando GAS já separou em colunas)
-      linhaBruta = row.join(' | ');
+      // Fallback: tenta montar a linha de todas as colunas
+      linhaBruta = row.map(c => String(c || '').trim()).filter(Boolean).join(' | ');
     }
 
     if (!linhaBruta || linhaBruta.length < 5) continue;
 
     // Remove prefixos do Power BI
     linhaBruta = linhaBruta
-      .replace('Row Selection | ', '')
-      .replace('Select Row | ', '')
+      .replace(/Row Selection \| /g, '')
+      .replace(/Select Row \| /g, '')
       .trim();
 
-    // Separa por " | "
-    const partes = linhaBruta.split(' | ').map(p => p.trim()).filter(Boolean);
-    if (partes.length < 2) continue;
+    const p = linhaBruta.split(' | ').map(x => x.trim()).filter(Boolean);
+    if (p.length < 2) continue;
 
-    // Extrai dias sem vender do primeiro campo: "+100 dias", "100 dias", "100"
-    const diasMatch = partes[0].match(/\d+/);
+    // Índices confirmados pelo screenshot:
+    // [0] FAIXA DE DIAS  ex: "+100 dias"
+    // [1] APELIDO        ex: "DIANA"
+    // [2] ENTRADA        ex: "09/01/2025"
+    // [3] SITUAÇÃO       ex: "ATIVO"
+    // [4] FUNÇÃO         ex: "CONSULTOR DE VENDAS 2.0"
+    // [5] GERENTE        ex: "SCOTT"
+    // [6] SUPERINT.      ex: "BETEL"
+    // [7] DIRETOR        ex: "LISBOA"
+    // [8] DATA ÚLTIMA VENDA  ex: "31/05/2025"
+    // [9] DIAS S/ VENDER ex: "291"
+
+    const diasMatch = p[0].match(/\d+/);
     const diasSemVender = diasMatch ? parseInt(diasMatch[0]) : 0;
 
-    // Nome: segundo campo
-    const nome = partes[1]?.toUpperCase().trim();
-    if (!nome || nome.length < 2) continue;
+    const nome = p[1]?.toUpperCase().trim();
+    if (!nome || nome.length < 2 || nome === 'APELIDO') continue; // pula cabeçalho
 
-    // Data: terceiro campo (dd/mm/yyyy ou similar)
-    const dataRaw = partes[2] || '';
-    const dataUltimaVenda = dataRaw.match(/\d{2}\/\d{2}\/\d{4}/) ? dataRaw : '';
+    const dataEntrada     = p[2] || '';
+    const cargo           = p[4] || '';
+    const gerente         = p[5] || '';
+    const super_          = p[6] || '';
+    const dataUltimaVenda = p[8] || '';
+    // Dias numérico pode vir na col [9] diretamente
+    const diasNumericos   = p[9] ? (parseInt(p[9]) || diasSemVender) : diasSemVender;
 
-    // Cargo: último campo
-    const cargo = partes[partes.length - 1] || '';
-
-    mapa[nome] = { diasSemVender, dataUltimaVenda, cargo };
+    mapa[nome] = {
+      diasSemVender: diasNumericos,
+      dataEntrada,
+      dataUltimaVenda,
+      cargo,
+      gerente,
+      super_,
+    };
   }
   return mapa;
 }
