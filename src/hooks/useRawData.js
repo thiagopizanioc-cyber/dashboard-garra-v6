@@ -14,10 +14,40 @@ async function fetchCSV(gid) {
   return data; // array de arrays, linha 0 = cabeçalho
 }
 
+/**
+ * parseDate — suporta todos os formatos que o Google Sheets exporta via CSV:
+ *   dd/mm/yyyy          → formato brasileiro (mais comum)
+ *   dd/mm/yyyy hh:mm:ss → timestamp brasileiro
+ *   yyyy-mm-dd          → ISO
+ *   M/D/YYYY            → padrão americano que o Sheets às vezes usa
+ *   Objeto Date         → passa direto
+ */
 function parseDate(v) {
   if (!v) return null;
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+
+  const s = String(v).trim();
+  if (!s) return null;
+
+  // dd/mm/yyyy ou dd/mm/yyyy hh:mm:ss  (formato brasileiro)
+  const brMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (brMatch) {
+    const [, d, m, y] = brMatch;
+    // Se dia > 12, com certeza é dd/mm — caso contrário ainda assume dd/mm
+    const dt = new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+
+  // yyyy-mm-dd (ISO)
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const dt = new Date(s);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+
+  // Fallback — tenta o Date nativo
+  const dt = new Date(s);
+  return isNaN(dt.getTime()) ? null : dt;
 }
 
 export function useRawData() {
