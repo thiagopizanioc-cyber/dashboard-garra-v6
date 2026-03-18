@@ -84,11 +84,19 @@ export function P1_Diretoria({ data, setPage, setTarget,
           <KpiCard icon="📝" label="Proposta Assinada" value={total.propostas} sub="Form 3"/>
           <KpiCard icon="⏳" label="Pré-Vendas"        value={total.preVendas} sub="SICAQ + entrada" gold/>
           <KpiCard icon="💰" label="VGV Total"
-            value={`R$ ${fmt.num(resumoPBI.vgvTotal/1000,0)}k`}
+            value={resumoPBI.vgvTotal >= 1e6
+              ? `R$ ${fmt.num(resumoPBI.vgvTotal/1e6, 2)}M`
+              : resumoPBI.vgvTotal >= 1000
+              ? `R$ ${fmt.num(resumoPBI.vgvTotal/1000, 0)}k`
+              : `R$ ${fmt.num(resumoPBI.vgvTotal, 0)}`}
             sub={resumoPBI.ultimaAtualizacao ? `Atualizado: ${resumoPBI.ultimaAtualizacao}` : 'Power BI'}
             gold/>
           <KpiCard icon="🏦" label="Recebimento"
-            value={`R$ ${fmt.num(resumoPBI.recebimento/1000,0)}k`}
+            value={resumoPBI.recebimento >= 1e6
+              ? `R$ ${fmt.num(resumoPBI.recebimento/1e6, 2)}M`
+              : resumoPBI.recebimento >= 1000
+              ? `R$ ${fmt.num(resumoPBI.recebimento/1000, 0)}k`
+              : `R$ ${fmt.num(resumoPBI.recebimento, 0)}`}
             sub={`${fmt.pct(resumoPBI.vgvTotal > 0 ? resumoPBI.recebimento/resumoPBI.vgvTotal : 0)} do VGV`}
             gold/>
         </div>
