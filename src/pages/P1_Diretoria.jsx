@@ -23,7 +23,8 @@ function TopRanking({ title, data, metrica, format, setPage, setTarget }) {
 }
 
 export function P1_Diretoria({ data, setPage, setTarget,
-                                vendas, loadVendas, errVendas, lastVendas, fetchVendas,
+                                vendas, corretoresPBI, resumoPBI,
+                                loadVendas, errVendas, lastVendas, fetchVendas, fetchResumo,
                                 alertasRastreabilidade }) {
   const { corretores, media } = data;
   const total = consolidar(corretores);
@@ -57,21 +58,38 @@ export function P1_Diretoria({ data, setPage, setTarget,
           <div className="page-sub">Consolidado da operação {periodo && `· ${periodo}`}</div>
         </div>
         <BotaoSincVendas loading={loadVendas} lastFetch={lastVendas}
-                         error={errVendas} onSync={fetchVendas}/>
+                         error={errVendas}
+                         onSync={() => { fetchVendas(); fetchResumo(); }}/>
       </div>
 
       {/* Alertas de rastreabilidade */}
       <PainelRastreabilidade alertas={alertasRastreabilidade}/>
 
-      {/* KPIs — funil completo 6 estágios */}
-      <div className="kpi-grid kpi-grid-6">
-        <KpiCard icon="👥" label="Corretores"     value={`${total.ativos}/${total.total}`} sub={`${total.total-total.ativos} sem registro`}/>
-        <KpiCard icon="📞" label="Leads"           value={total.leads}   sub={`Média ${fmt.num(total.leads/Math.max(1,total.ativos),1)}/corretor`}/>
-        <KpiCard icon="📅" label="Agendamentos"    value={total.agend}   sub={`Taxa ${fmt.pct(total.txLeadAgend)}`} gold/>
-        <KpiCard icon="🏠" label="Visitas"         value={total.visitas} sub={`Conv. ${fmt.pct(total.txConv)}`} gold/>
-        <KpiCard icon="📝" label="Proposta Asinada" value={total.propostas} sub="Form 3 preenchido"/>
-        <KpiCard icon="⏳" label="Pré-Vendas"      value={total.preVendas} sub="SICAQ + entrada" gold/>
+      {/* KPIs — funil + VGV quando disponível */}
+      <div className={resumoPBI ? 'kpi-grid kpi-grid-4' : 'kpi-grid kpi-grid-6'}>
+        <KpiCard icon="👥" label="Corretores"      value={`${total.ativos}/${total.total}`} sub={`${total.total-total.ativos} sem registro`}/>
+        <KpiCard icon="📞" label="Leads"            value={total.leads}   sub={`Média ${fmt.num(total.leads/Math.max(1,total.ativos),1)}/corretor`}/>
+        <KpiCard icon="📅" label="Agendamentos"     value={total.agend}   sub={`Taxa ${fmt.pct(total.txLeadAgend)}`} gold/>
+        <KpiCard icon="🏠" label="Visitas"          value={total.visitas} sub={`Conv. ${fmt.pct(total.txConv)}`} gold/>
+        {!resumoPBI && <KpiCard icon="📝" label="Proposta Assinada" value={total.propostas} sub="Form 3 preenchido"/>}
+        {!resumoPBI && <KpiCard icon="⏳" label="Pré-Vendas" value={total.preVendas} sub="SICAQ + entrada" gold/>}
       </div>
+
+      {/* KPIs financeiros do Power BI — aparecem após sync */}
+      {resumoPBI && (
+        <div className="kpi-grid kpi-grid-4">
+          <KpiCard icon="📝" label="Proposta Assinada" value={total.propostas} sub="Form 3"/>
+          <KpiCard icon="⏳" label="Pré-Vendas"        value={total.preVendas} sub="SICAQ + entrada" gold/>
+          <KpiCard icon="💰" label="VGV Total"
+            value={`R$ ${fmt.num(resumoPBI.vgvTotal/1000,0)}k`}
+            sub={resumoPBI.ultimaAtualizacao ? `Atualizado: ${resumoPBI.ultimaAtualizacao}` : 'Power BI'}
+            gold/>
+          <KpiCard icon="🏦" label="Recebimento"
+            value={`R$ ${fmt.num(resumoPBI.recebimento/1000,0)}k`}
+            sub={`${fmt.pct(resumoPBI.vgvTotal > 0 ? resumoPBI.recebimento/resumoPBI.vgvTotal : 0)} do VGV`}
+            gold/>
+        </div>
+      )}
 
       {/* Funil 6 etapas + bloco Power BI */}
       <div className="row-2">

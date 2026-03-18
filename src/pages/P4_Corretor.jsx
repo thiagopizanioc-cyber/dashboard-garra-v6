@@ -266,6 +266,17 @@ export function P4_Corretor({ data, controle, target, setPage, media, getPhoto,
                 <div className="cor-nome" translate="no">{corretor.corretor}</div>
                 <div className="cor-sub" translate="no">{corretor.gerente} · {corretor.superintendente}</div>
                 <div className="cor-periodo">{corretor.dataInicio} a {corretor.dataFim} · {corretor.periodo} dias</div>
+                {/* Dias sem vender — vem do PBI_CORRETORES */}
+                {corretoresPBI?.[corretor.corretor] != null && (
+                  <div className="dias-sem-vender">
+                    {corretoresPBI[corretor.corretor] === 0
+                      ? <span className="dsv-ok">✅ Vendeu recentemente</span>
+                      : <span className="dsv-alerta" style={{color: corretoresPBI[corretor.corretor] > 14 ? '#f87171' : '#fbbf24'}}>
+                          ⏱ {corretoresPBI[corretor.corretor]} dias sem vender
+                        </span>
+                    }
+                  </div>
+                )}
               </div>
             </div>
             <div style={{display:'flex',gap:10,alignItems:'center'}}>
