@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { KpiCard, FunilBar, Card } from '../components/Shared';
-import { BotaoSincVendas, PainelRastreabilidade } from '../components/VendasExternas';
+import { BotaoSincVendas, SinoAlertas, CardPBI } from '../components/VendasExternas';
 import { fmt, statusCorretor, consolidar } from '../utils/index';
 
 function TopRanking({ title, data, metrica, format, setPage, setTarget }) {
@@ -57,13 +57,16 @@ export function P1_Diretoria({ data, setPage, setTarget,
           <h2 className="page-title">🏛️ Visão Diretoria</h2>
           <div className="page-sub">Consolidado da operação {periodo && `· ${periodo}`}</div>
         </div>
-        <BotaoSincVendas loading={loadVendas} lastFetch={lastVendas}
-                         error={errVendas}
-                         onSync={() => { fetchVendas(); fetchResumo(); }}/>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <BotaoSincVendas loading={loadVendas} lastFetch={lastVendas}
+                           error={errVendas}
+                           onSync={() => { fetchVendas(); fetchResumo(); }}/>
+          <SinoAlertas alertas={alertasRastreabilidade}/>
+        </div>
       </div>
 
-      {/* Alertas de rastreabilidade */}
-      <PainelRastreabilidade alertas={alertasRastreabilidade}/>
+      {/* CardPBI — totais do Power BI inline após sync */}
+      <CardPBI vendas={vendas} resumoPBI={resumoPBI}/>
 
       {/* KPIs — funil + VGV quando disponível */}
       <div className={resumoPBI ? 'kpi-grid kpi-grid-4' : 'kpi-grid kpi-grid-6'}>

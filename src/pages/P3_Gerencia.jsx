@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { KpiCard, Card, AlertaBanner, Semaforo, FunilBar, ScoreRing, PersonCard } from '../components/Shared';
 import { RelatorioGrupoModal } from '../components/RelatorioGrupoModal';
-import { PainelRastreabilidade } from '../components/VendasExternas';
+import { SinoAlertas } from '../components/VendasExternas';
 import { fmt, consolidar, semaforo, semaforoInfo, pontosDeAtencao, statusCorretor, topCanais } from '../utils/index';
 
 const METRICAS_COLS = [
@@ -134,6 +134,7 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPho
           </div>
         </div>
         <div style={{display:'flex',gap:10,alignItems:'center'}}>
+          <SinoAlertas alertas={alertasGerencia}/>
           <button className="btn-relatorio" onClick={()=>setShowRelatorio(true)}>
             📄 Gerar Relatório
           </button>
@@ -156,7 +157,6 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPho
       )}
 
       <AlertaBanner alertas={alertas}/>
-      <PainelRastreabilidade alertas={alertasGerencia}/>
 
       {/* Tabela de corretores com semáforos */}
       <Card title={`🔍 Corretores — ${selected} · Semáforo vs média do time`}>
