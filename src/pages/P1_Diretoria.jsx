@@ -65,7 +65,8 @@ export function P1_Diretoria({ data, setPage, setTarget,
         </div>
       </div>
 
-      {/* CardPBI — totais do Power BI inline após sync */}
+      {/* CardPBI — aparece logo abaixo do título após sync */}
+      <CardPBI vendas={vendas} resumoPBI={resumoPBI}/>
 
       {/* KPIs — sempre 6 cards, VGV/Recebimento substituem Proposta/Pré-Venda após sync */}
       <div className="kpi-grid kpi-grid-6">
