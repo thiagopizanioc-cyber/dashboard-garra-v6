@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { KpiCard, FunilBar, Card } from '../components/Shared';
-import { BotaoSincVendas, SinoAlertas, CardPBI } from '../components/VendasExternas';
+import { BotaoSincVendas, SinoAlertas } from '../components/VendasExternas';
 import { fmt, statusCorretor, consolidar } from '../utils/index';
 
 function TopRanking({ title, data, metrica, format, setPage, setTarget }) {
@@ -22,6 +22,57 @@ function TopRanking({ title, data, metrica, format, setPage, setTarget }) {
   );
 }
 
+// ─── Modal de lista de vendas ─────────────────────────────────────────────────
+function ModalListaVendas({ tipo, vendas, onClose }) {
+  const tipoMap = { vendaSV: 'vendaSV', preVenda: 'preVenda', proposta: 'proposta' };
+  const titulos = { vendaSV: '🏆 Vendas SV', preVenda: '⏳ Pré-Vendas', proposta: '📝 Propostas Assinadas' };
+  const cores   = { vendaSV: '#22c55e',       preVenda: '#a855f7',        proposta: '#ef4444' };
+
+  const itens = [];
+  if (vendas) {
+    Object.entries(vendas).forEach(([corretor, d]) => {
+      (d.detalhes || []).forEach(det => {
+        if (det.tipo === tipoMap[tipo]) itens.push({ corretor, ...det });
+      });
+    });
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e=>e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 style={{color: cores[tipo]}}>{titulos[tipo]} <span className="modal-count">{itens.length}</span></h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {itens.length === 0 && <div className="empty">Sem dados disponíveis</div>}
+          <table className="data-table">
+            <thead><tr>
+              <th>Corretor</th><th>Empreendimento / Cliente</th><th>Estágio</th><th>Data</th>
+            </tr></thead>
+            <tbody>
+              {itens.map((it, i) => {
+                // linhaBruta: "CORRETOR | GERENTE | SUPER | EMPREEN | ESTAGIO"
+                const partes = (it.linhaBruta || '').split(' | ');
+                const empreen = it.cliente || partes[3] || '—';
+                const estagio = partes[4] || it.tipo || '—';
+                return (
+                  <tr key={i}>
+                    <td className="td-nome">{it.corretor}</td>
+                    <td>{empreen}</td>
+                    <td style={{color: cores[tipo], fontSize:'12px'}}>{estagio}</td>
+                    <td style={{color:'var(--text3)', fontSize:'12px'}}>{it.data || '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function P1_Diretoria({ data, setPage, setTarget,
                                 vendas, corretoresPBI, resumoPBI,
                                 loadVendas, errVendas, lastVendas, fetchVendas, fetchResumo,
@@ -30,15 +81,15 @@ export function P1_Diretoria({ data, setPage, setTarget,
   const total = consolidar(corretores);
   if (!total) return null;
 
+  const [modalTipo, setModalTipo] = useState(null);
+
   const periodo = corretores[0]?.dataInicio
     ? `${corretores[0].dataInicio} a ${corretores[0].dataFim}` : '';
 
-  // Totais de vendas externas (Power BI)
   const extProp = vendas ? Object.values(vendas).reduce((s,v)=>s+v.proposta,0) : null;
   const extPre  = vendas ? Object.values(vendas).reduce((s,v)=>s+v.preVenda,0) : null;
   const extSV   = vendas ? Object.values(vendas).reduce((s,v)=>s+v.vendaSV,0) : null;
 
-  // Ranking por gerente — inclui vendaSV
   const gerentesMap = {};
   corretores.forEach(c=>{
     if (!gerentesMap[c.gerente]) gerentesMap[c.gerente] = [];
@@ -52,6 +103,8 @@ export function P1_Diretoria({ data, setPage, setTarget,
 
   return (
     <div className="page">
+      {modalTipo && <ModalListaVendas tipo={modalTipo} vendas={vendas} onClose={()=>setModalTipo(null)}/>}
+
       <div className="page-header">
         <div>
           <h2 className="page-title">🏛️ Visão Diretoria</h2>
@@ -67,34 +120,56 @@ export function P1_Diretoria({ data, setPage, setTarget,
 
       {/* KPIs dos Forms — sempre visíveis */}
       <div className="kpi-grid kpi-grid-6">
-        <KpiCard icon="👥" label="Corretores"         value={`${total.ativos}/${total.total}`} sub={`${total.total-total.ativos} sem registro`}/>
-        <KpiCard icon="📞" label="Leads"               value={total.leads}        sub={`Média ${fmt.num(total.leads/Math.max(1,total.ativos),1)}/corretor`}/>
-        <KpiCard icon="📅" label="Agendamentos"        value={total.agend}        sub={`Taxa ${fmt.pct(total.txLeadAgend)}`} gold/>
-        <KpiCard icon="🏠" label="Visitas"             value={total.visitas}      sub={`Conv. ${fmt.pct(total.txConv)}`} gold/>
-        <KpiCard icon="📝" label="Proposta Assinada"   value={total.propostas}    sub="Form 3"/>
-        <KpiCard icon="⏳" label="Pré-Vendas"          value={total.preVendas}    sub="SICAQ + entrada" gold/>
+        <KpiCard icon="👥" label="Corretores"       value={`${total.ativos}/${total.total}`} sub={`${total.total-total.ativos} sem registro`}/>
+        <KpiCard icon="📞" label="Leads"             value={total.leads}     sub={`Média ${fmt.num(total.leads/Math.max(1,total.ativos),1)}/corretor`}/>
+        <KpiCard icon="📅" label="Agendamentos"      value={total.agend}     sub={`Taxa ${fmt.pct(total.txLeadAgend)}`} gold/>
+        <KpiCard icon="🏠" label="Visitas"           value={total.visitas}   sub={`Conv. ${fmt.pct(total.txConv)}`} gold/>
+        <KpiCard icon="📝" label="Proposta Assinada" value={total.propostas} sub="Form 3"/>
+        <KpiCard icon="⏳" label="Pré-Vendas"        value={total.preVendas} sub="SICAQ + entrada" gold/>
       </div>
 
-      {/* CardPBI — aparece abaixo dos KPIs após sync, sem substituir nada */}
-      <CardPBI vendas={vendas} resumoPBI={resumoPBI}/>
+      {/* Barra Power BI — aparece após sync, ordem: VGV, Recebimento, Venda SV, Pré-Vendas, Propostas */}
+      {vendas && (
+        <div className="pbi-kpi-bar">
+          {/* VGV e Recebimento — estilo dourado, sem clique */}
+          {resumoPBI && <>
+            <div className="pbi-kpi-item pbi-kpi-gold">
+              <div className="pbi-kpi-val">
+                {resumoPBI.vgvTotal >= 1e6
+                  ? `R$ ${fmt.num(resumoPBI.vgvTotal/1e6, 2)} Milhões`
+                  : `R$ ${fmt.num(resumoPBI.vgvTotal/1000, 0)} mil`}
+              </div>
+              <div className="pbi-kpi-lbl">VGV Total</div>
+              <div className="pbi-kpi-sub">{resumoPBI.ultimaAtualizacao || 'Power BI'}</div>
+            </div>
+            <div className="pbi-kpi-item pbi-kpi-gold">
+              <div className="pbi-kpi-val">
+                {resumoPBI.recebimento >= 1e6
+                  ? `R$ ${fmt.num(resumoPBI.recebimento/1e6, 2)} Milhões`
+                  : `R$ ${fmt.num(resumoPBI.recebimento/1000, 0)} mil`}
+              </div>
+              <div className="pbi-kpi-lbl">Recebimento</div>
+              <div className="pbi-kpi-sub">{fmt.pct(resumoPBI.vgvTotal > 0 ? resumoPBI.recebimento/resumoPBI.vgvTotal : 0)} do VGV</div>
+            </div>
+            <div className="pbi-kpi-divider"/>
+          </>}
 
-      {/* KPIs do Power BI — linha extra após sync */}
-      {resumoPBI && (
-        <div className="kpi-grid kpi-grid-4">
-          <KpiCard icon="🏆" label="Venda SV (CRM)"  value={extSV ?? 0}         sub="Validado no sistema" gold/>
-          <KpiCard icon="💰" label="VGV Total"
-            value={resumoPBI.vgvTotal >= 1e6
-              ? `R$ ${fmt.num(resumoPBI.vgvTotal/1e6, 2)} Milhões`
-              : `R$ ${fmt.num(resumoPBI.vgvTotal/1000, 0)} mil`}
-            sub={resumoPBI.ultimaAtualizacao || 'Power BI'} gold/>
-          <KpiCard icon="🏦" label="Recebimento"
-            value={resumoPBI.recebimento >= 1e6
-              ? `R$ ${fmt.num(resumoPBI.recebimento/1e6, 2)} Milhões`
-              : `R$ ${fmt.num(resumoPBI.recebimento/1000, 0)} mil`}
-            sub={`${fmt.pct(resumoPBI.vgvTotal > 0 ? resumoPBI.recebimento/resumoPBI.vgvTotal : 0)} do VGV`} gold/>
-          <KpiCard icon="📊" label="% Receb./VGV"
-            value={fmt.pct(resumoPBI.vgvTotal > 0 ? resumoPBI.recebimento/resumoPBI.vgvTotal : 0)}
-            sub="Entrada recebida" gold/>
+          {/* Venda SV, Pré-Vendas, Propostas — clicáveis */}
+          <div className="pbi-kpi-item pbi-kpi-clickable" onClick={()=>setModalTipo('vendaSV')}>
+            <div className="pbi-kpi-val" style={{color:'#22c55e'}}>{extSV}</div>
+            <div className="pbi-kpi-lbl">Venda SV ✅</div>
+            <div className="pbi-kpi-sub">Entrada na Secretaria</div>
+          </div>
+          <div className="pbi-kpi-item pbi-kpi-clickable" onClick={()=>setModalTipo('preVenda')}>
+            <div className="pbi-kpi-val" style={{color:'#a855f7'}}>{extPre}</div>
+            <div className="pbi-kpi-lbl">Pré-Venda</div>
+            <div className="pbi-kpi-sub">SICAQ + entrada</div>
+          </div>
+          <div className="pbi-kpi-item pbi-kpi-clickable" onClick={()=>setModalTipo('proposta')}>
+            <div className="pbi-kpi-val" style={{color:'#ef4444'}}>{extProp}</div>
+            <div className="pbi-kpi-lbl">Proposta Assinada</div>
+            <div className="pbi-kpi-sub">33% vira venda</div>
+          </div>
         </div>
       )}
 
@@ -146,29 +221,6 @@ export function P1_Diretoria({ data, setPage, setTarget,
           })()}
         </Card>
       </div>
-
-      {/* Power BI Box — só aparece após sync */}
-      {vendas && (
-        <Card title="🔗 Dados Power BI — Sistema da Empresa">
-          <div className="pbi-grid">
-            <div className="pbi-item">
-              <div className="pbi-val" style={{color:'#ef4444'}}>{extProp}</div>
-              <div className="pbi-lbl">Proposta Assinada</div>
-              <div className="pbi-desc">33% vira venda</div>
-            </div>
-            <div className="pbi-item">
-              <div className="pbi-val" style={{color:'#a855f7'}}>{extPre}</div>
-              <div className="pbi-lbl">Pré-Venda</div>
-              <div className="pbi-desc">SICAQ + entrada</div>
-            </div>
-            <div className="pbi-item pbi-destaque">
-              <div className="pbi-val" style={{color:'#22c55e'}}>{extSV}</div>
-              <div className="pbi-lbl">Venda SV ✅</div>
-              <div className="pbi-desc">Entrada na Secretaria</div>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* Top Rankings */}
       <div className="row-3">
