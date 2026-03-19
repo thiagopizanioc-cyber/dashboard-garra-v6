@@ -66,7 +66,12 @@ export function FunilBar({ steps }) {
           <div key={s.label} className="funil-step">
             <div className="funil-row">
               <span className="funil-label">{s.label}</span>
-              <span className="funil-val" style={{color:s.color}}>{s.value}</span>
+              <span className="funil-val" style={{color:s.color}}>
+                {s.value}
+                {s.sub != null && (
+                  <span className="funil-val-sub"> ({s.sub})</span>
+                )}
+              </span>
               {taxa!==null && <span className="funil-taxa">→ {fmt.pct(taxa)}</span>}
             </div>
             <div className="funil-bg">
