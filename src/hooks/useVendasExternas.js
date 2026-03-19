@@ -81,11 +81,17 @@ function parsearVendas(rows) {
 }
 
 /**
- * Parseia PBI_CORRETORES — colunas confirmadas no screenshot da P6:
- * FAIXA DE DIAS | APELIDO | ENTRADA | SITUAÇÃO | FUNÇÃO | GERENTE | SUPERINT. | DIRETOR | DATA ÚLTIMA VENDA | DIAS S/ VENDER
- *
- * Formato de cada linha no Sheets (GAS separou por " | "):
- * "+100 dias | DIANA | 09/01/2025 | ATIVO | CONSULTOR DE VENDAS 2.0 | SCOTT | BETEL | LISBOA | 31/05/2025 | 291"
+ * Parseia PBI_CORRETORES — estrutura gerada pelo GAS v8:
+ * Col 1: Faixa de Dias    ex: "+100 dias"
+ * Col 2: Apelido          ex: "DIANA"
+ * Col 3: Entrada          ex: "09/01/2025"
+ * Col 4: Situação         ex: "ATIVO"
+ * Col 5: Função           ex: "CONSULTOR DE VENDAS 2.0"
+ * Col 6: Gerente          ex: "SCOTT"
+ * Col 7: Superintendente  ex: "BETEL"
+ * Col 8: Diretor          ex: "LISBOA"
+ * Col 9: Data Última Venda ex: "31/05/2025"
+ * Col 10: Dias S/ Vender  ex: "291"
  *
  * Retorna mapa { NOME → { diasSemVender, dataEntrada, dataUltimaVenda, cargo, gerente, super_ } }
  */
@@ -93,60 +99,32 @@ function parsearCorretores(rows) {
   if (!rows || rows.length < 2) return {};
   const mapa = {};
 
-  for (let i = 0; i < rows.length; i++) {
+  for (let i = 1; i < rows.length; i++) { // começa em 1 para pular cabeçalho
     const row = rows[i];
+    if (!row || row.length < 2) continue;
 
-    // Identifica a linha bruta — col C quando col B = "P6_CORRETOR" (formato GAS)
-    let linhaBruta = '';
-    const colB = String(row[1] || '');
-    if (colB === 'P6_CORRETOR' || colB.includes('P6')) {
-      linhaBruta = String(row[2] || '');
-    } else {
-      // Fallback: tenta montar a linha de todas as colunas
-      linhaBruta = row.map(c => String(c || '').trim()).filter(Boolean).join(' | ');
-    }
+    // Cada linha é uma linha separada da planilha com as colunas já alinhadas pelo GAS
+    const faixaDias   = String(row[0] || '').trim(); // "+100 dias"
+    const nome        = String(row[1] || '').toUpperCase().trim(); // "DIANA"
+    const dataEntrada = String(row[2] || '').trim(); // "09/01/2025"
+    // row[3] = Situação, row[4] = Função
+    const cargo       = String(row[4] || '').trim();
+    const gerente     = String(row[5] || '').trim();
+    const super_      = String(row[6] || '').trim();
+    // row[7] = Diretor
+    const dataUltima  = String(row[8] || '').trim(); // "31/05/2025"
+    const diasStr     = String(row[9] || '').trim(); // "291"
 
-    if (!linhaBruta || linhaBruta.length < 5) continue;
+    if (!nome || nome === 'APELIDO' || nome.length < 2) continue;
 
-    // Remove prefixos do Power BI
-    linhaBruta = linhaBruta
-      .replace(/Row Selection \| /g, '')
-      .replace(/Select Row \| /g, '')
-      .trim();
-
-    const p = linhaBruta.split(' | ').map(x => x.trim()).filter(Boolean);
-    if (p.length < 2) continue;
-
-    // Índices confirmados pelo screenshot:
-    // [0] FAIXA DE DIAS  ex: "+100 dias"
-    // [1] APELIDO        ex: "DIANA"
-    // [2] ENTRADA        ex: "09/01/2025"
-    // [3] SITUAÇÃO       ex: "ATIVO"
-    // [4] FUNÇÃO         ex: "CONSULTOR DE VENDAS 2.0"
-    // [5] GERENTE        ex: "SCOTT"
-    // [6] SUPERINT.      ex: "BETEL"
-    // [7] DIRETOR        ex: "LISBOA"
-    // [8] DATA ÚLTIMA VENDA  ex: "31/05/2025"
-    // [9] DIAS S/ VENDER ex: "291"
-
-    const diasMatch = p[0].match(/\d+/);
-    const diasSemVender = diasMatch ? parseInt(diasMatch[0]) : 0;
-
-    const nome = p[1]?.toUpperCase().trim();
-    if (!nome || nome.length < 2 || nome === 'APELIDO') continue; // pula cabeçalho
-
-    const dataEntrada     = p[2] || '';
-    const cargo           = p[4] || '';
-    const gerente         = p[5] || '';
-    const super_          = p[6] || '';
-    const dataUltimaVenda = p[8] || '';
-    // Dias numérico pode vir na col [9] diretamente
-    const diasNumericos   = p[9] ? (parseInt(p[9]) || diasSemVender) : diasSemVender;
+    // Extrai número de dias — preferencialmente da col 10 (numérico direto)
+    // Se não, extrai do campo faixaDias: "+100 dias" → 100
+    const diasNumericos = parseInt(diasStr) || (faixaDias.match(/\d+/) ? parseInt(faixaDias.match(/\d+/)[0]) : 0);
 
     mapa[nome] = {
-      diasSemVender: diasNumericos,
-      dataEntrada,
-      dataUltimaVenda,
+      diasSemVender:  diasNumericos,
+      dataEntrada:    dataEntrada,
+      dataUltimaVenda: dataUltima,
       cargo,
       gerente,
       super_,
