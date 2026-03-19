@@ -66,41 +66,34 @@ export function P1_Diretoria({ data, setPage, setTarget,
       </div>
 
       {/* CardPBI — totais do Power BI inline após sync */}
-      <CardPBI vendas={vendas} resumoPBI={resumoPBI}/>
 
-      {/* KPIs — funil + VGV quando disponível */}
-      <div className={resumoPBI ? 'kpi-grid kpi-grid-4' : 'kpi-grid kpi-grid-6'}>
+      {/* KPIs — sempre 6 cards, VGV/Recebimento substituem Proposta/Pré-Venda após sync */}
+      <div className="kpi-grid kpi-grid-6">
         <KpiCard icon="👥" label="Corretores"      value={`${total.ativos}/${total.total}`} sub={`${total.total-total.ativos} sem registro`}/>
         <KpiCard icon="📞" label="Leads"            value={total.leads}   sub={`Média ${fmt.num(total.leads/Math.max(1,total.ativos),1)}/corretor`}/>
         <KpiCard icon="📅" label="Agendamentos"     value={total.agend}   sub={`Taxa ${fmt.pct(total.txLeadAgend)}`} gold/>
         <KpiCard icon="🏠" label="Visitas"          value={total.visitas} sub={`Conv. ${fmt.pct(total.txConv)}`} gold/>
-        {!resumoPBI && <KpiCard icon="📝" label="Proposta Assinada" value={total.propostas} sub="Form 3 preenchido"/>}
-        {!resumoPBI && <KpiCard icon="⏳" label="Pré-Vendas" value={total.preVendas} sub="SICAQ + entrada" gold/>}
+        {resumoPBI
+          ? <KpiCard icon="💰" label="VGV Total"
+              value={resumoPBI.vgvTotal >= 1e6
+                ? `R$ ${fmt.num(resumoPBI.vgvTotal/1e6, 2)} Milhões`
+                : resumoPBI.vgvTotal >= 1000
+                ? `R$ ${fmt.num(resumoPBI.vgvTotal/1000, 0)} mil`
+                : `R$ ${fmt.num(resumoPBI.vgvTotal, 0)}`}
+              sub={resumoPBI.ultimaAtualizacao || 'Power BI'} gold/>
+          : <KpiCard icon="📝" label="Proposta Assinada" value={total.propostas} sub="Form 3"/>
+        }
+        {resumoPBI
+          ? <KpiCard icon="🏦" label="Recebimento"
+              value={resumoPBI.recebimento >= 1e6
+                ? `R$ ${fmt.num(resumoPBI.recebimento/1e6, 2)} Milhões`
+                : resumoPBI.recebimento >= 1000
+                ? `R$ ${fmt.num(resumoPBI.recebimento/1000, 0)} mil`
+                : `R$ ${fmt.num(resumoPBI.recebimento, 0)}`}
+              sub={`${fmt.pct(resumoPBI.vgvTotal > 0 ? resumoPBI.recebimento/resumoPBI.vgvTotal : 0)} do VGV`} gold/>
+          : <KpiCard icon="⏳" label="Pré-Vendas" value={total.preVendas} sub="SICAQ + entrada" gold/>
+        }
       </div>
-
-      {/* KPIs financeiros do Power BI — aparecem após sync */}
-      {resumoPBI && (
-        <div className="kpi-grid kpi-grid-4">
-          <KpiCard icon="📝" label="Proposta Assinada" value={total.propostas} sub="Form 3"/>
-          <KpiCard icon="⏳" label="Pré-Vendas"        value={total.preVendas} sub="SICAQ + entrada" gold/>
-          <KpiCard icon="💰" label="VGV Total"
-            value={resumoPBI.vgvTotal >= 1e6
-              ? `R$ ${fmt.num(resumoPBI.vgvTotal/1e6, 2)}M`
-              : resumoPBI.vgvTotal >= 1000
-              ? `R$ ${fmt.num(resumoPBI.vgvTotal/1000, 0)}k`
-              : `R$ ${fmt.num(resumoPBI.vgvTotal, 0)}`}
-            sub={resumoPBI.ultimaAtualizacao ? `Atualizado: ${resumoPBI.ultimaAtualizacao}` : 'Power BI'}
-            gold/>
-          <KpiCard icon="🏦" label="Recebimento"
-            value={resumoPBI.recebimento >= 1e6
-              ? `R$ ${fmt.num(resumoPBI.recebimento/1e6, 2)}M`
-              : resumoPBI.recebimento >= 1000
-              ? `R$ ${fmt.num(resumoPBI.recebimento/1000, 0)}k`
-              : `R$ ${fmt.num(resumoPBI.recebimento, 0)}`}
-            sub={`${fmt.pct(resumoPBI.vgvTotal > 0 ? resumoPBI.recebimento/resumoPBI.vgvTotal : 0)} do VGV`}
-            gold/>
-        </div>
-      )}
 
       {/* Funil 6 etapas + bloco Power BI */}
       <div className="row-2">
