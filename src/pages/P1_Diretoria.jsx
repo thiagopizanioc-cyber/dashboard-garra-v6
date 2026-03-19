@@ -173,16 +173,25 @@ export function P1_Diretoria({ data, setPage, setTarget,
         </div>
       )}
 
-      {/* Funil 6 etapas + bloco Power BI */}
+      {/* Funil 6 etapas + superintendência */}
       <div className="row-2">
         <Card title="⚡ Funil Completo da Operação">
           <FunilBar steps={[
-            {label:'Leads',            value:total.leads,      color:'#f59e0b'},
-            {label:'Agendamentos',     value:total.agend,      color:'#fb923c'},
-            {label:'Visitas',          value:total.visitas,    color:'#f97316'},
-            {label:'Proposta Assinada',value:total.propostas,  color:'#ef4444'},
-            {label:'Pré-Venda',        value:total.preVendas,  color:'#a855f7'},
-            {label:'Venda SV',         value:extSV ?? total.vendaSV, color:'#22c55e'},
+            {label:'Leads',             value:total.leads,    color:'#f59e0b'},
+            {label:'Agendamentos',      value:total.agend,    color:'#fb923c'},
+            {label:'Visitas',           value:total.visitas,  color:'#f97316'},
+            {label:'Proposta Assinada',
+              value: extProp ?? total.propostas,
+              sub:   extProp != null ? total.propostas : null,
+              color:'#ef4444'},
+            {label:'Pré-Venda',
+              value: extPre ?? total.preVendas,
+              sub:   extPre != null ? total.preVendas : null,
+              color:'#a855f7'},
+            {label:'Venda SV',
+              value: extSV ?? total.vendaSV,
+              sub:   extSV != null ? total.vendaSV : null,
+              color:'#22c55e'},
           ]}/>
           {!vendas && (
             <div className="funil-hint">
@@ -198,12 +207,19 @@ export function P1_Diretoria({ data, setPage, setTarget,
               if(!superMap[c.superintendente]) superMap[c.superintendente]=[];
               superMap[c.superintendente].push(c);
             });
-            return Object.entries(superMap).map(([s,lista])=>{
-              const cons = consolidar(lista);
-              // Vendas SV externas para essa super
-              let svExt = 0;
-              if (vendas) lista.forEach(c => { svExt += vendas[c.corretor]?.vendaSV || 0; });
-              return (
+            return Object.entries(superMap)
+              .map(([s, lista]) => {
+                const cons = consolidar(lista);
+                let svExt = 0, preExt = 0;
+                if (vendas) lista.forEach(c => {
+                  svExt  += vendas[c.corretor]?.vendaSV  || 0;
+                  preExt += vendas[c.corretor]?.preVenda || 0;
+                });
+                const score = cons.agend + cons.visitas + (svExt || cons.vendaSV)*3 + (preExt || cons.preVendas)*2;
+                return { s, lista, cons, svExt, preExt, score };
+              })
+              .sort((a, b) => b.score - a.score)
+              .map(({ s, cons, svExt, preExt }) => (
                 <div key={s} className="super-row" onClick={()=>{setTarget({type:'super',nome:s});setPage('super');}}>
                   <div>
                     <div className="super-nome">{s||'—'}</div>
@@ -212,21 +228,50 @@ export function P1_Diretoria({ data, setPage, setTarget,
                   <div className="super-stats">
                     <span>📅 {cons.agend}</span>
                     <span>🏠 {cons.visitas}</span>
-                    <span className={cons.preVendas>0?'val-gold':''}>⏳ {cons.preVendas}</span>
-                    <span className={svExt>0?'val-green':''}>🏆 {svExt > 0 ? svExt : cons.vendaSV}</span>
+                    <span className={preExt>0||cons.preVendas>0?'val-gold':''}>
+                      ⏳ {preExt > 0 ? preExt : cons.preVendas}
+                    </span>
+                    <span className={svExt>0||cons.vendaSV>0?'val-green':''}>
+                      🏆 {svExt > 0 ? svExt : cons.vendaSV}
+                    </span>
                   </div>
                 </div>
-              );
-            });
+              ));
           })()}
         </Card>
       </div>
 
-      {/* Top Rankings */}
+      {/* Top Rankings — Vendas SV usa dados PBI se disponível */}
       <div className="row-3">
-        <TopRanking title="🥇 Top Vendas SV"     data={corretores} metrica="vendaSV"       format={fmt.int} setPage={setPage} setTarget={setTarget}/>
-        <TopRanking title="📅 Top Agendamentos"  data={corretores} metrica="agendForm2"    format={fmt.int} setPage={setPage} setTarget={setTarget}/>
-        <TopRanking title="📊 Top Conversão"     data={corretores} metrica="taxaVisitaConv" format={v=>fmt.pct(v)} setPage={setPage} setTarget={setTarget}/>
+        {vendas
+          ? (() => {
+              // Monta ranking com dados do PBI por corretor
+              const topSV = Object.entries(vendas)
+                .map(([nome, d]) => ({ corretor: nome, vendaSVext: d.vendaSV || 0,
+                  gerente: corretores.find(c=>c.corretor===nome)?.gerente || '' }))
+                .filter(c => c.vendaSVext > 0)
+                .sort((a,b) => b.vendaSVext - a.vendaSVext).slice(0, 5);
+              return (
+                <Card title="🥇 Top Vendas SV">
+                  {topSV.length === 0 && <p className="empty">Sem dados no período</p>}
+                  {topSV.map((c, i) => (
+                    <div key={c.corretor} className="top-row"
+                      onClick={()=>{setTarget({type:'corretor',nome:c.corretor});setPage('corretor');}}>
+                      <span className="top-pos">{i+1}</span>
+                      <div className="top-info">
+                        <span className="top-nome">{c.corretor}</span>
+                        <span className="top-sub">{c.gerente}</span>
+                      </div>
+                      <span className="top-val" style={{color:'#22c55e'}}>{c.vendaSVext}</span>
+                    </div>
+                  ))}
+                </Card>
+              );
+            })()
+          : <TopRanking title="🥇 Top Vendas SV" data={corretores} metrica="vendaSV" format={fmt.int} setPage={setPage} setTarget={setTarget}/>
+        }
+        <TopRanking title="📅 Top Agendamentos"  data={corretores} metrica="agendForm2"     format={fmt.int}      setPage={setPage} setTarget={setTarget}/>
+        <TopRanking title="📊 Top Conversão"     data={corretores} metrica="taxaVisitaConv"  format={v=>fmt.pct(v)} setPage={setPage} setTarget={setTarget}/>
       </div>
 
       {/* Top Gerentes */}
