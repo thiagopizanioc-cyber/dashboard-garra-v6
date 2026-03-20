@@ -163,7 +163,7 @@ export default function App() {
 
   const renderPage = () => {
     const props = { data, controle, target, setTarget, setPage, getPhoto, savePhoto,
-                    dataPeriodoAnterior, ...vendasProps };
+                    dataPeriodoAnterior, raw, ...vendasProps };
     switch(page) {
       case 'diretoria': return <P1_Diretoria {...props}/>;
       case 'super':     return <P2_Superintendencia {...props}/>;

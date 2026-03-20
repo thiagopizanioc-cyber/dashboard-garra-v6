@@ -329,6 +329,71 @@ export function RelatorioModal({ corretor, media, onClose, getPhoto }) {
             </div>
           )}
 
+          {/* ── EXTRATO DOS FORMS ── */}
+          <div className="rel-section">
+            <div className="rel-section-title">📋 Extrato de Preenchimentos</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+
+              {/* Form 1 — Registro Diário */}
+              <div className="rel-ai-block" style={{borderLeftColor:'#f59e0b'}}>
+                <div className="rel-ai-title" style={{color:'#f59e0b'}}>📝 Form 1 — Registro Diário</div>
+                <table className="rel-table" style={{fontSize:'11px'}}>
+                  <tbody>
+                    <tr><td>Dias com preenchimento</td><td style={{fontWeight:600}}>{corretor.diasTrabalhados}</td></tr>
+                    <tr><td>Total de Leads</td><td style={{fontWeight:600}}>{corretor.leads}</td></tr>
+                    <tr><td>Repiks</td><td style={{fontWeight:600}}>{corretor.repiks}</td></tr>
+                    <tr><td>Discador (min)</td><td style={{fontWeight:600}}>{corretor.tempoDiscador}</td></tr>
+                    <tr><td>Agend. declarados</td><td style={{fontWeight:600}}>{corretor.agendForm1}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pontualidade */}
+              <div className="rel-ai-block" style={{borderLeftColor:'#22c55e'}}>
+                <div className="rel-ai-title" style={{color:'#22c55e'}}>⏰ Pontualidade no Preenchimento</div>
+                <table className="rel-table" style={{fontSize:'11px'}}>
+                  <tbody>
+                    <tr><td>Antes das 20h</td><td style={{fontWeight:600,color:'#22c55e'}}>{corretor.antes20h} dias ({fmt.pct(corretor.diasTrabalhados>0?corretor.antes20h/corretor.diasTrabalhados:0)})</td></tr>
+                    <tr><td>Até 00h</td><td style={{fontWeight:600,color:'#60a5fa'}}>{corretor.ate00h} dias ({fmt.pct(corretor.diasTrabalhados>0?corretor.ate00h/corretor.diasTrabalhados:0)})</td></tr>
+                    <tr><td>Retroativo</td><td style={{fontWeight:600,color:corretor.retroativo>0?'#f87171':'#94a3b8'}}>{corretor.retroativo} dias ({fmt.pct(corretor.diasTrabalhados>0?corretor.retroativo/corretor.diasTrabalhados:0)})</td></tr>
+                    <tr><td>Streak atual</td><td style={{fontWeight:600,color:corretor.streak>=10?'#f59e0b':'#94a3b8'}}>{corretor.streak} dias consecutivos</td></tr>
+                    <tr><td>Folgas</td><td style={{fontWeight:600}}>{corretor.folgas}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Form 2 — Agendamentos */}
+              <div className="rel-ai-block" style={{borderLeftColor:'#fb923c'}}>
+                <div className="rel-ai-title" style={{color:'#fb923c'}}>📅 Form 2 — Clientes Agendados</div>
+                <table className="rel-table" style={{fontSize:'11px'}}>
+                  <tbody>
+                    <tr><td>Agendamentos registrados</td><td style={{fontWeight:600}}>{corretor.agendForm2}</td></tr>
+                    <tr><td>Aprovados SICAQ</td><td style={{fontWeight:600}}>{corretor.sicaqQtd}</td></tr>
+                    <tr><td>% SICAQ/Agend.</td><td style={{fontWeight:600}}>{fmt.pct(corretor.sicaqPerc)}</td></tr>
+                    {topCanais(corretor.canaisAg, 3).map(([canal, v]) => (
+                      <tr key={canal}><td>Canal: {canal}</td><td style={{fontWeight:600}}>{fmt.pct(v)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Form 3 — Visitas */}
+              <div className="rel-ai-block" style={{borderLeftColor:'#a855f7'}}>
+                <div className="rel-ai-title" style={{color:'#a855f7'}}>🏠 Form 3 — Visitas Realizadas</div>
+                <table className="rel-table" style={{fontSize:'11px'}}>
+                  <tbody>
+                    <tr><td>Visitas realizadas</td><td style={{fontWeight:600}}>{corretor.visitasForm3}</td></tr>
+                    <tr><td>No-Show</td><td style={{fontWeight:600,color:corretor.noShow>0.3?'#f87171':'#94a3b8'}}>{fmt.pct(corretor.noShow)}</td></tr>
+                    <tr><td>Propostas assinadas</td><td style={{fontWeight:600,color:'#ef4444'}}>{corretor.propostas}</td></tr>
+                    <tr><td>Pré-Vendas</td><td style={{fontWeight:600,color:'#a855f7'}}>{corretor.preVendas}</td></tr>
+                    <tr><td>Gerente na visita</td><td style={{fontWeight:600}}>{corretor.visitasComGerente} ({fmt.pct(corretor.taxaPartGerente)})</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </div>
+
           <div className="rel-footer">
             Gerado em {new Date().toLocaleString('pt-BR')} · Sistema GARRA
           </div>

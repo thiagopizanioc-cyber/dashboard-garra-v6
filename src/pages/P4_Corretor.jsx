@@ -37,35 +37,83 @@ function RankingCard({ title, corretores, metrica, format, cor, getPhoto, onSele
   );
 }
 
-function DisciplinaBlock({ c, controle }) {
+function DisciplinaBlock({ c, controle, raw }) {
   const engaj = c.diasTrabalhados>0 ? (c.antes20h+c.ate00h)/c.diasTrabalhados : 0;
   const padroes = controle?.[c.corretor]?.padroes || [];
-  const alerta = controle?.[c.corretor]?.alerta || false;
+  const [popup, setPopup] = useState(null); // 'antes20h' | 'ate00h' | 'retroativo' | 'folgas'
+
+  // Busca os dias individuais do raw.controle para este corretor
+  const diasDetalhados = raw?.controle
+    ?.filter(r => r.corretor === c.corretor)
+    ?.sort((a,b) => b.data - a.data) || [];
+
+  const diasPorTipo = {
+    antes20h:  diasDetalhados.filter(r => r.status.includes('No Prazo')),
+    ate00h:    diasDetalhados.filter(r => r.status.includes('Atrasado')),
+    retroativo:diasDetalhados.filter(r => r.status.includes('Retroativo')),
+    folgas:    diasDetalhados.filter(r => r.status.toLowerCase().includes('folga')),
+  };
+
+  const titulosPopup = {
+    antes20h:   { label: 'Antes das 20h ✅', cor: '#34d399' },
+    ate00h:     { label: 'Até as 00h 🔵',    cor: '#60a5fa' },
+    retroativo: { label: 'Retroativo ⚠️',    cor: '#f87171' },
+    folgas:     { label: 'Folgas 🏖️',        cor: '#94a3b8' },
+  };
+
+  const fmtData = d => d ? new Date(d).toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'2-digit'}) : '—';
 
   return (
     <Card title="⏰ Disciplina & Frequência">
+      {/* Popup de detalhe */}
+      {popup && (
+        <div className="disc-popup-overlay" onClick={() => setPopup(null)}>
+          <div className="disc-popup" onClick={e => e.stopPropagation()}>
+            <div className="disc-popup-header" style={{borderBottomColor: titulosPopup[popup].cor}}>
+              <span style={{color: titulosPopup[popup].cor}}>{titulosPopup[popup].label}</span>
+              <button onClick={() => setPopup(null)} className="disc-popup-close">✕</button>
+            </div>
+            <div className="disc-popup-body">
+              {diasPorTipo[popup].length === 0
+                ? <div className="empty">Nenhum dia nesta categoria no período</div>
+                : diasPorTipo[popup].map((r, i) => (
+                    <div key={i} className="disc-popup-dia">
+                      <span className="disc-popup-data">{fmtData(r.data)}</span>
+                      <span className="disc-popup-status" style={{color: titulosPopup[popup].cor}}>{r.status}</span>
+                    </div>
+                  ))
+              }
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="disc-grid">
-        <div className="disc-item">
+        <div className="disc-item disc-item-click" onClick={() => setPopup('antes20h')} title="Ver dias">
           <div className="disc-val" style={{color:c.antes20h/Math.max(1,c.diasTrabalhados)>=0.8?'#34d399':'#fbbf24'}}>
             {fmt.pct(c.diasTrabalhados>0?c.antes20h/c.diasTrabalhados:0)}
           </div>
           <div className="disc-label">Antes das 20h</div>
+          <div className="disc-count">{c.antes20h} dias ↗</div>
         </div>
-        <div className="disc-item">
+        <div className="disc-item disc-item-click" onClick={() => setPopup('ate00h')} title="Ver dias">
           <div className="disc-val" style={{color:'#60a5fa'}}>
             {fmt.pct(c.diasTrabalhados>0?c.ate00h/c.diasTrabalhados:0)}
           </div>
           <div className="disc-label">Até as 00h</div>
+          <div className="disc-count">{c.ate00h} dias ↗</div>
         </div>
-        <div className="disc-item">
+        <div className="disc-item disc-item-click" onClick={() => setPopup('retroativo')} title="Ver dias">
           <div className="disc-val" style={{color:c.retroativo>0?'#f87171':'#94a3b8'}}>
             {fmt.pct(c.diasTrabalhados>0?c.retroativo/c.diasTrabalhados:0)}
           </div>
           <div className="disc-label">Retroativo</div>
+          <div className="disc-count">{c.retroativo} dias ↗</div>
         </div>
-        <div className="disc-item">
+        <div className="disc-item disc-item-click" onClick={() => setPopup('folgas')} title="Ver dias">
           <div className="disc-val" style={{color:c.folgas>5?'#f87171':'#94a3b8'}}>{c.folgas}</div>
           <div className="disc-label">Folgas</div>
+          <div className="disc-count">ver dias ↗</div>
         </div>
       </div>
 
@@ -235,7 +283,7 @@ function GerenteBlock({ c }) {
 }
 
 export function P4_Corretor({ data, controle, target, setPage, media, getPhoto,
-                              vendas, corretoresPBI, alertasRastreabilidade, savePhoto }) {
+                              vendas, corretoresPBI, alertasRastreabilidade, savePhoto, raw }) {
   const { corretores, supers, gerentes } = data;
 
   const [selectedSuper, setSelectedSuper] = useState(target?.data?.superintendente || supers[0] || '');
@@ -390,7 +438,7 @@ export function P4_Corretor({ data, controle, target, setPage, media, getPhoto,
 
           {/* Blocos */}
           <div className="row-2">
-            <DisciplinaBlock c={corretor} controle={controle}/>
+            <DisciplinaBlock c={corretor} controle={controle} raw={raw}/>
             <AtividadeBlock  c={corretor} media={media}/>
           </div>
           <PerformanceBlock c={corretor} media={media} vendas={vendas}/>

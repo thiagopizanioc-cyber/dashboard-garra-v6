@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { KpiCard, Card, AlertaBanner, Semaforo, FunilBar, ScoreRing, PersonCard } from '../components/Shared';
 import { RelatorioGrupoModal } from '../components/RelatorioGrupoModal';
-import { SinoAlertas } from '../components/VendasExternas';
+import { SinoAlertas, BotaoForm1 } from '../components/VendasExternas';
 import { fmt, consolidar, semaforo, semaforoInfo, pontosDeAtencao, statusCorretor, topCanais } from '../utils/index';
 
 const METRICAS_COLS = [
@@ -102,7 +102,7 @@ function CorretorModal({ c, media, controle, onClose, onViewFull }) {
   );
 }
 
-export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPhoto,
+export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPhoto, raw,
                               vendas, alertasRastreabilidade }) {
   const { corretores, gerentes, media } = data;
   const [selected, setSelected] = useState(target?.nome || gerentes[0] || '');
@@ -134,6 +134,7 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPho
           </div>
         </div>
         <div style={{display:'flex',gap:10,alignItems:'center'}}>
+          <BotaoForm1 raw={raw} corretores={listaGerente}/>
           <SinoAlertas alertas={alertasGerencia}/>
           <button className="btn-relatorio" onClick={()=>setShowRelatorio(true)}>
             📄 Gerar Relatório
