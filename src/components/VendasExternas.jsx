@@ -150,65 +150,72 @@ export function BotaoForm1({ raw, corretores }) {
 
   if (!raw?.form1 || !corretores?.length) return null;
 
-  // Compara datas no fuso local — evita bug UTC
+  // d0local — converte Date para string YYYY-MM-DD no fuso local
+  // parseDate já cria datas no fuso local (meio-dia), então getDate() é confiável
   const d0local = d => {
-    const x = new Date(d);
+    if (!d) return '';
+    const x = d instanceof Date ? d : new Date(d);
     return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
   };
 
   const nomesEquipe = corretores.map(c => c.corretor);
 
-  // Quem preencheu: pega todos os registros do form1 para a data selecionada
-  // Pode ter múltiplos (repreenchimento), mantemos o mais recente
-  const mapaPreencheram = {};
-  raw.form1
+  // ── Fonte de verdade: CONTROLE_DIARIO ──────────────────────────────────────
+  // Cada corretor tem exatamente uma linha por dia com status:
+  //   "✅ No Prazo"  / "⚠️ Atrasado"  / "🔴 Retroativo"  / "Folga"
+  // Quem NÃO tem linha = pendente (inativo ou esqueceu)
+
+  const mapaControle = {};
+  (raw.controle || [])
+    .filter(r => d0local(r.data) === dataFiltro && nomesEquipe.includes(r.corretor))
+    .forEach(r => { mapaControle[r.corretor] = r; });
+
+  // Timestamp real do envio vem do Form1 (col A = quando submeteu)
+  const mapaForm1 = {};
+  (raw.form1 || [])
     .filter(r => d0local(r.data) === dataFiltro && nomesEquipe.includes(r.corretor))
     .forEach(r => {
-      // Guarda o registro com o timestamp mais recente
-      if (!mapaPreencheram[r.corretor] || r.timestamp > mapaPreencheram[r.corretor].timestamp) {
-        mapaPreencheram[r.corretor] = r;
-      }
+      if (!mapaForm1[r.corretor] || r.timestamp > mapaForm1[r.corretor].timestamp)
+        mapaForm1[r.corretor] = r;
     });
 
-  // Quem estava de folga
-  const folgaram = new Set(
-    (raw.controle || [])
-      .filter(r => d0local(r.data) === dataFiltro
-                && nomesEquipe.includes(r.corretor)
-                && r.status.toLowerCase().includes('folga'))
-      .map(r => r.corretor)
-  );
+  const filtrados = nomesEquipe.filter(n => corretorFiltro ? n === corretorFiltro : true);
+
+  // Classifica cada corretor pelo status do CONTROLE_DIARIO
+  const preenchidos = [];
+  const folgas      = [];
+  const pendentes   = [];
+
+  filtrados.forEach(nome => {
+    const ctrl = mapaControle[nome];
+    if (!ctrl) {
+      pendentes.push({ nome });
+      return;
+    }
+    const s = ctrl.status.toLowerCase();
+    if (s.includes('folga')) {
+      folgas.push({ nome, ctrl });
+    } else {
+      // No Prazo, Atrasado, Retroativo — todos contam como preenchido
+      const ts = mapaForm1[nome]?.timestamp || null;
+      let badge = '✅';
+      if (s.includes('atrasado'))   badge = '⚠️';
+      if (s.includes('retroativo')) badge = '🔴';
+      preenchidos.push({ nome, ctrl, ts, badge });
+    }
+  });
+
+  preenchidos.sort((a,b) => a.nome.localeCompare(b.nome));
+  pendentes.sort((a,b)   => a.nome.localeCompare(b.nome));
+
+  const totalPendentes = nomesEquipe.filter(n => !mapaControle[n]).length;
 
   const fmtTs = ts => {
     if (!ts) return '—';
-    const d = new Date(ts);
+    const d = ts instanceof Date ? ts : new Date(ts);
+    if (isNaN(d.getTime())) return '—';
     return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   };
-
-  const fmtDataRelatorio = str => {
-    if (!str) return '—';
-    const [y,m,d] = str.split('-');
-    return `${d}/${m}/${y}`;
-  };
-
-  // Separa em preenchidos e pendentes
-  const filtrados = nomesEquipe.filter(n => corretorFiltro ? n === corretorFiltro : true);
-
-  const preenchidos = filtrados
-    .filter(n => mapaPreencheram[n] && !folgaram.has(n))
-    .map(n => ({ nome: n, registro: mapaPreencheram[n] }))
-    .sort((a,b) => a.nome.localeCompare(b.nome));
-
-  const folgas = filtrados
-    .filter(n => folgaram.has(n))
-    .map(n => ({ nome: n }));
-
-  const pendentes = filtrados
-    .filter(n => !mapaPreencheram[n] && !folgaram.has(n))
-    .map(n => ({ nome: n }))
-    .sort((a,b) => a.nome.localeCompare(b.nome));
-
-  const totalPendentes = nomesEquipe.filter(n => !mapaPreencheram[n] && !folgaram.has(n)).length;
 
   return (
     <div style={{position:'relative'}}>
@@ -236,48 +243,49 @@ export function BotaoForm1({ raw, corretores }) {
           </div>
           <div className="form1-resumo">
             <span style={{color:'#22c55e'}}>✅ {preenchidos.length}</span>
-            <span style={{color:'#f87171'}}>❌ {pendentes.length} pendentes</span>
-            <span style={{color:'#94a3b8'}}>🏖️ {folgas.length} folgas</span>
+            <span style={{color:'#f87171'}}>❌ {pendentes.length}</span>
+            <span style={{color:'#94a3b8'}}>🏖️ {folgas.length}</span>
           </div>
           <div className="form1-lista">
 
-            {/* PREENCHIDOS — com data do relatório e horário de envio */}
             {preenchidos.length > 0 && (
               <>
                 <div className="form1-secao">✅ Preenchidos</div>
                 {preenchidos.map(item => (
-                  <div key={item.nome} className="form1-item" style={{borderLeftColor:'#22c55e'}}>
-                    <span className="form1-nome" translate="no">{item.nome}</span>
+                  <div key={item.nome} className="form1-item" style={{
+                    borderLeftColor: item.badge==='✅'?'#22c55e': item.badge==='⚠️'?'#fbbf24':'#f87171'
+                  }}>
+                    <span className="form1-nome" translate="no">{item.badge} {item.nome}</span>
                     <div className="form1-detalhe">
-                      <span className="form1-data-rel">{fmtDataRelatorio(d0local(item.registro.data))}</span>
-                      <span className="form1-ts" style={{color:'#22c55e'}}>{fmtTs(item.registro.timestamp)}</span>
+                      <span className="form1-data-rel">{dataFiltro.split('-').reverse().join('/')}</span>
+                      <span className="form1-ts" style={{
+                        color: item.badge==='✅'?'#22c55e': item.badge==='⚠️'?'#fbbf24':'#f87171'
+                      }}>{fmtTs(item.ts)}</span>
                     </div>
                   </div>
                 ))}
               </>
             )}
 
-            {/* FOLGAS */}
             {folgas.length > 0 && (
               <>
                 <div className="form1-secao">🏖️ Folgas</div>
                 {folgas.map(item => (
                   <div key={item.nome} className="form1-item" style={{borderLeftColor:'#94a3b8'}}>
                     <span className="form1-nome" translate="no">{item.nome}</span>
-                    <span style={{fontSize:'11px',color:'#94a3b8'}}>folga</span>
+                    <span style={{fontSize:'11px',color:'#94a3b8'}}>folga automática</span>
                   </div>
                 ))}
               </>
             )}
 
-            {/* PENDENTES */}
             {pendentes.length > 0 && (
               <>
-                <div className="form1-secao" style={{color:'#f87171'}}>❌ Pendentes</div>
+                <div className="form1-secao" style={{color:'#f87171'}}>❌ Sem registro</div>
                 {pendentes.map(item => (
                   <div key={item.nome} className="form1-item" style={{borderLeftColor:'#f87171'}}>
                     <span className="form1-nome" translate="no">{item.nome}</span>
-                    <span style={{fontSize:'11px',color:'#f87171'}}>pendente</span>
+                    <span style={{fontSize:'11px',color:'#f87171'}}>sem registro</span>
                   </div>
                 ))}
               </>
