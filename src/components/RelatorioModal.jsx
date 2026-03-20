@@ -54,7 +54,7 @@ Responda SOMENTE no formato JSON abaixo (sem markdown, sem explicações fora do
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
       }),
     }
   );
@@ -62,8 +62,15 @@ Responda SOMENTE no formato JSON abaixo (sem markdown, sem explicações fora do
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const clean = text.replace(/```json|```/g, '').trim();
-  return JSON.parse(clean);
+  // Remove markdown fences e extrai só o JSON
+  const clean = text
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim();
+  // Tenta encontrar o bloco JSON mesmo se vier com texto antes/depois
+  const match = clean.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('Resposta da IA não contém JSON válido');
+  return JSON.parse(match[0]);
 }
 
 export function RelatorioModal({ corretor, media, onClose, getPhoto }) {
