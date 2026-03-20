@@ -1469,3 +1469,19 @@ button,select,input{font-family:var(--font);}
 .disc-popup-dia:hover { background: var(--bg3); }
 .disc-popup-data { color: var(--text2); font-weight: 500; }
 .disc-popup-status { font-size: 11px; font-weight: 600; }
+
+/* ── Form1 dropdown novos elementos ── */
+.form1-secao {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text3);
+  padding: 8px 14px 4px; background: var(--bg3);
+}
+.form1-detalhe {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+}
+.form1-data-rel {
+  font-size: 11px; color: var(--text2); font-weight: 500;
+}
+.form1-ts {
+  font-size: 11px; font-weight: 700;
+}
