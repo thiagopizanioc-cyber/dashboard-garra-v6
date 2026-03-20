@@ -139,55 +139,82 @@ export function PainelRastreabilidade({ alertas }) {
 // Mostra quem não preencheu o Form1 em uma data específica
 // Filtra pela super/gerente conforme o contexto da página
 export function BotaoForm1({ raw, corretores }) {
-  const [aberto, setAberto]       = useState(false);
+  const [aberto, setAberto]         = useState(false);
   const [dataFiltro, setDataFiltro] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10);
+    // Usa fuso local para evitar bug UTC
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   });
   const [corretorFiltro, setCorretorFiltro] = useState('');
 
   if (!raw?.form1 || !corretores?.length) return null;
 
-  // Para a data filtrada, quem preencheu o Form1
-  const dataSel = new Date(dataFiltro + 'T12:00:00');
-  const d0 = d => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
-  const dataN = d0(dataSel);
+  // Compara datas no fuso local — evita bug UTC
+  const d0local = d => {
+    const x = new Date(d);
+    return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+  };
 
   const nomesEquipe = corretores.map(c => c.corretor);
-  const preencheram = new Set(
-    raw.form1
-      .filter(r => d0(r.data).getTime() === dataN.getTime() && nomesEquipe.includes(r.corretor))
-      .map(r => r.corretor)
-  );
 
-  // Também considera quem estava de folga no CONTROLE_DIARIO
+  // Quem preencheu: pega todos os registros do form1 para a data selecionada
+  // Pode ter múltiplos (repreenchimento), mantemos o mais recente
+  const mapaPreencheram = {};
+  raw.form1
+    .filter(r => d0local(r.data) === dataFiltro && nomesEquipe.includes(r.corretor))
+    .forEach(r => {
+      // Guarda o registro com o timestamp mais recente
+      if (!mapaPreencheram[r.corretor] || r.timestamp > mapaPreencheram[r.corretor].timestamp) {
+        mapaPreencheram[r.corretor] = r;
+      }
+    });
+
+  // Quem estava de folga
   const folgaram = new Set(
     (raw.controle || [])
-      .filter(r => d0(r.data).getTime() === dataN.getTime()
+      .filter(r => d0local(r.data) === dataFiltro
                 && nomesEquipe.includes(r.corretor)
                 && r.status.toLowerCase().includes('folga'))
       .map(r => r.corretor)
   );
 
-  // Monta lista final
-  let lista = nomesEquipe
-    .filter(n => corretorFiltro ? n === corretorFiltro : true)
-    .map(nome => {
-      if (folgaram.has(nome))    return { nome, status: 'folga',      cor: '#94a3b8', icon: '🏖️' };
-      if (preencheram.has(nome)) return { nome, status: 'preenchido', cor: '#22c55e', icon: '✅' };
-      return                            { nome, status: 'pendente',   cor: '#f87171', icon: '❌' };
-    });
+  const fmtTs = ts => {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  };
 
-  const pendentes = lista.filter(l => l.status === 'pendente').length;
+  const fmtDataRelatorio = str => {
+    if (!str) return '—';
+    const [y,m,d] = str.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
+  // Separa em preenchidos e pendentes
+  const filtrados = nomesEquipe.filter(n => corretorFiltro ? n === corretorFiltro : true);
+
+  const preenchidos = filtrados
+    .filter(n => mapaPreencheram[n] && !folgaram.has(n))
+    .map(n => ({ nome: n, registro: mapaPreencheram[n] }))
+    .sort((a,b) => a.nome.localeCompare(b.nome));
+
+  const folgas = filtrados
+    .filter(n => folgaram.has(n))
+    .map(n => ({ nome: n }));
+
+  const pendentes = filtrados
+    .filter(n => !mapaPreencheram[n] && !folgaram.has(n))
+    .map(n => ({ nome: n }))
+    .sort((a,b) => a.nome.localeCompare(b.nome));
+
+  const totalPendentes = nomesEquipe.filter(n => !mapaPreencheram[n] && !folgaram.has(n)).length;
 
   return (
     <div style={{position:'relative'}}>
-      <button
-        className="btn-form1"
-        onClick={() => setAberto(!aberto)}
-        title="Extrato Form 1"
-      >
+      <button className="btn-form1" onClick={() => setAberto(!aberto)} title="Extrato Form 1">
         📋
-        {pendentes > 0 && <span className="form1-badge">{pendentes}</span>}
+        {totalPendentes > 0 && <span className="form1-badge">{totalPendentes}</span>}
       </button>
 
       {aberto && (
@@ -197,34 +224,65 @@ export function BotaoForm1({ raw, corretores }) {
             <button onClick={() => setAberto(false)} className="form1-close">✕</button>
           </div>
           <div className="form1-filtros">
-            <input
-              type="date"
-              value={dataFiltro}
+            <input type="date" value={dataFiltro}
               onChange={e => setDataFiltro(e.target.value)}
-              className="form1-input-data"
-            />
-            <select
-              value={corretorFiltro}
+              className="form1-input-data"/>
+            <select value={corretorFiltro}
               onChange={e => setCorretorFiltro(e.target.value)}
-              className="form1-select"
-            >
+              className="form1-select">
               <option value="">Todos os corretores</option>
               {nomesEquipe.sort().map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </div>
           <div className="form1-resumo">
-            <span style={{color:'#f87171'}}>❌ {lista.filter(l=>l.status==='pendente').length} pendentes</span>
-            <span style={{color:'#22c55e'}}>✅ {lista.filter(l=>l.status==='preenchido').length} preenchidos</span>
-            <span style={{color:'#94a3b8'}}>🏖️ {lista.filter(l=>l.status==='folga').length} folgas</span>
+            <span style={{color:'#22c55e'}}>✅ {preenchidos.length}</span>
+            <span style={{color:'#f87171'}}>❌ {pendentes.length} pendentes</span>
+            <span style={{color:'#94a3b8'}}>🏖️ {folgas.length} folgas</span>
           </div>
           <div className="form1-lista">
-            {lista.map(item => (
-              <div key={item.nome} className="form1-item" style={{borderLeftColor: item.cor}}>
-                <span className="form1-icon">{item.icon}</span>
-                <span className="form1-nome" translate="no">{item.nome}</span>
-                <span className="form1-status" style={{color: item.cor}}>{item.status}</span>
-              </div>
-            ))}
+
+            {/* PREENCHIDOS — com data do relatório e horário de envio */}
+            {preenchidos.length > 0 && (
+              <>
+                <div className="form1-secao">✅ Preenchidos</div>
+                {preenchidos.map(item => (
+                  <div key={item.nome} className="form1-item" style={{borderLeftColor:'#22c55e'}}>
+                    <span className="form1-nome" translate="no">{item.nome}</span>
+                    <div className="form1-detalhe">
+                      <span className="form1-data-rel">{fmtDataRelatorio(d0local(item.registro.data))}</span>
+                      <span className="form1-ts" style={{color:'#22c55e'}}>{fmtTs(item.registro.timestamp)}</span>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* FOLGAS */}
+            {folgas.length > 0 && (
+              <>
+                <div className="form1-secao">🏖️ Folgas</div>
+                {folgas.map(item => (
+                  <div key={item.nome} className="form1-item" style={{borderLeftColor:'#94a3b8'}}>
+                    <span className="form1-nome" translate="no">{item.nome}</span>
+                    <span style={{fontSize:'11px',color:'#94a3b8'}}>folga</span>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* PENDENTES */}
+            {pendentes.length > 0 && (
+              <>
+                <div className="form1-secao" style={{color:'#f87171'}}>❌ Pendentes</div>
+                {pendentes.map(item => (
+                  <div key={item.nome} className="form1-item" style={{borderLeftColor:'#f87171'}}>
+                    <span className="form1-nome" translate="no">{item.nome}</span>
+                    <span style={{fontSize:'11px',color:'#f87171'}}>pendente</span>
+                  </div>
+                ))}
+              </>
+            )}
+
           </div>
         </div>
       )}
