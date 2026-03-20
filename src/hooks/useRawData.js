@@ -15,12 +15,12 @@ async function fetchCSV(gid) {
 }
 
 /**
- * parseDate — suporta todos os formatos que o Google Sheets exporta via CSV:
- *   dd/mm/yyyy          → formato brasileiro (mais comum)
- *   dd/mm/yyyy hh:mm:ss → timestamp brasileiro
- *   yyyy-mm-dd          → ISO
- *   M/D/YYYY            → padrão americano que o Sheets às vezes usa
- *   Objeto Date         → passa direto
+ * parseDate — sempre cria a data no fuso LOCAL (meio-dia) para evitar
+ * o bug clássico de UTC: new Date("2026-03-18") = meia-noite UTC = 21h BRT do dia 17.
+ * Suporta:
+ *   dd/mm/yyyy            → BR (mais comum no Sheets)
+ *   dd/mm/yyyy hh:mm:ss   → BR com hora (usa só a data, descarta hora)
+ *   yyyy-mm-dd            → ISO
  */
 function parseDate(v) {
   if (!v) return null;
@@ -29,25 +29,43 @@ function parseDate(v) {
   const s = String(v).trim();
   if (!s) return null;
 
-  // dd/mm/yyyy ou dd/mm/yyyy hh:mm:ss  (formato brasileiro)
+  // dd/mm/yyyy ou dd/mm/yyyy hh:mm:ss — extrai só a data, cria no fuso local
   const brMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (brMatch) {
     const [, d, m, y] = brMatch;
-    // Se dia > 12, com certeza é dd/mm — caso contrário ainda assume dd/mm
-    const dt = new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
-    return isNaN(dt.getTime()) ? null : dt;
+    // new Date(year, month-1, day, 12) cria no fuso LOCAL ao meio-dia — seguro
+    return new Date(Number(y), Number(m)-1, Number(d), 12, 0, 0);
   }
 
-  // yyyy-mm-dd (ISO)
+  // yyyy-mm-dd — também cria no fuso local
   const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) {
-    const dt = new Date(s);
-    return isNaN(dt.getTime()) ? null : dt;
+    const [, y, m, d] = isoMatch;
+    return new Date(Number(y), Number(m)-1, Number(d), 12, 0, 0);
   }
 
-  // Fallback — tenta o Date nativo
+  // Fallback
   const dt = new Date(s);
   return isNaN(dt.getTime()) ? null : dt;
+}
+
+/**
+ * parseTimestamp — preserva data E hora no fuso local.
+ * Para "18/03/2026 19:01:57" retorna Date(2026,2,18,19,1,57) — hora real do envio.
+ */
+function parseTimestamp(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+
+  const s = String(v).trim();
+  // dd/mm/yyyy hh:mm:ss
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) {
+    const [, d, mo, y, h, min, sec] = m;
+    return new Date(Number(y), Number(mo)-1, Number(d), Number(h), Number(min), Number(sec||0));
+  }
+  // Fallback para só data
+  return parseDate(v);
 }
 
 export function useRawData() {
@@ -72,8 +90,8 @@ export function useRawData() {
       // Col: A=timestamp, B=dataTrabalho, C=corretor, D=discador,
       //      E=leads, F=agendDeclared, G=visitasDeclared, J=repiks
       const form1 = rF1.slice(1).map(r => ({
-        timestamp:   parseDate(r[0]),
-        data:        parseDate(r[1]),
+        timestamp:   parseTimestamp(r[0]),  // col A: "18/03/2026 19:01:57" — preserva hora
+        data:        parseDate(r[1]),       // col B: "18/03/2026" — data do relatório
         corretor:    String(r[2]||'').toUpperCase().trim(),
         discador:    String(r[3]||''),
         leads:       Number(r[4])||0,
