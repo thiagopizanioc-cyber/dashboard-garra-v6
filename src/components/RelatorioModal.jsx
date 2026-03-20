@@ -98,30 +98,67 @@ export function RelatorioModal({ corretor, media, onClose, getPhoto }) {
       <meta charset="UTF-8"/>
       <title>Raio-X ${corretor.corretor}</title>
       <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; padding: 20px; }
-        h1 { font-size: 20px; text-align: center; margin-bottom: 4px; }
-        .sub { text-align: center; color: #555; margin-bottom: 16px; font-size: 11px; }
-        .kpis { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-        .kpi { background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; padding: 8px 12px; min-width: 80px; text-align: center; }
-        .kpi-val { font-size: 20px; font-weight: bold; color: #111; }
-        .kpi-lbl { font-size: 9px; color: #777; text-transform: uppercase; margin-top: 2px; }
-        .section { margin-bottom: 14px; }
-        .section-title { font-size: 13px; font-weight: bold; border-bottom: 2px solid #222; padding-bottom: 3px; margin-bottom: 8px; }
-        .ai-block { background: #f9f9f9; border-left: 4px solid #c8a200; padding: 8px 12px; margin-bottom: 8px; border-radius: 0 6px 6px 0; }
-        .ai-block-title { font-weight: bold; font-size: 11px; color: #c8a200; margin-bottom: 4px; }
-        table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        th { background: #222; color: #fff; padding: 5px 8px; text-align: left; }
-        td { padding: 4px 8px; border-bottom: 1px solid #eee; }
-        .resumo { background: #fffbe6; border: 1px solid #f0d060; padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 12px; }
-        ul { padding-left: 16px; }
-        ul li { margin-bottom: 3px; }
+        body { font-family: 'Inter', Arial, sans-serif; font-size: 12px; color: #1a1a1a; background: #fff; padding: 28px 32px; max-width: 900px; margin: 0 auto; }
+
+        /* ── CABEÇALHO ── */
+        .rel-header { display: flex; align-items: center; gap: 18px; border-bottom: 3px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 20px; }
+        .rel-header-avatar { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; border: 3px solid #c8a200; flex-shrink: 0; }
+        .rel-header-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .rel-logo { width: 100%; height: 100%; object-fit: cover; }
+        .rel-title { font-size: 22px; font-weight: 800; letter-spacing: .04em; color: #1a1a1a; margin-bottom: 4px; }
+        .rel-sub { font-size: 11px; color: #555; margin-top: 2px; }
+        .rel-sub strong { color: #1a1a1a; }
+
+        /* ── KPIs ── */
+        .rel-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 20px; }
+        .rel-kpi { background: #f8f8f8; border: 1px solid #e5e5e5; border-radius: 8px; padding: 10px 8px; text-align: center; }
+        .rel-kpi-val { font-size: 22px; font-weight: 700; color: #1a1a1a; line-height: 1.1; }
+        .rel-kpi-lbl { font-size: 8.5px; color: #888; text-transform: uppercase; letter-spacing: .06em; margin-top: 3px; }
+
+        /* ── RESUMO IA ── */
+        .rel-resumo { background: #fffbea; border: 1.5px solid #e8c840; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12.5px; line-height: 1.6; color: #3a2e00; }
+
+        /* ── GRID IA ── */
+        .rel-ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .rel-ai-block { background: #fafafa; border: 1px solid #eee; border-left: 4px solid #c8a200; border-radius: 0 8px 8px 0; padding: 10px 12px; }
+        .rel-ai-title { font-size: 10px; font-weight: 700; color: #c8a200; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+        .rel-ai-block p { font-size: 11.5px; line-height: 1.55; color: #333; }
+
+        /* ── PAUTA ── */
+        .rel-pauta { background: #f0f7ff; border: 1px solid #cce0ff; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+        .rel-pauta .rel-ai-title { color: #2563eb; }
+        .rel-pauta ul { padding-left: 18px; }
+        .rel-pauta ul li { font-size: 11.5px; line-height: 1.55; color: #1e3a6e; margin-bottom: 4px; }
+
+        /* ── SEÇÕES ── */
+        .rel-section { margin-bottom: 16px; }
+        .rel-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #1a1a1a; border-bottom: 2px solid #1a1a1a; padding-bottom: 5px; margin-bottom: 10px; }
+
+        /* ── TABELA ── */
+        .rel-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .rel-table th { background: #1a1a1a; color: #fff; padding: 6px 10px; text-align: left; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+        .rel-table td { padding: 5px 10px; border-bottom: 1px solid #f0f0f0; color: #333; }
+        .rel-table tr:nth-child(even) td { background: #fafafa; }
+
+        /* ── RODAPÉ ── */
+        .rel-footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 10px; color: #999; text-align: center; }
+
+        /* ── IA PLACEHOLDER ── */
+        .rel-ia-placeholder { display: none; }
+
+        @media print {
+          body { padding: 16px 20px; }
+          .rel-kpis { grid-template-columns: repeat(6, 1fr); }
+          .rel-ai-grid { grid-template-columns: 1fr 1fr; }
+        }
       </style></head><body>
       ${printRef.current?.innerHTML || ''}
     </body></html>`;
     win.document.write(html);
     win.document.close();
-    win.print();
+    setTimeout(() => win.print(), 800);
   }
 
   const stats = [
