@@ -1,0 +1,167 @@
+/**
+ * useRawData — lê as 4 abas brutas em paralelo e armazena em cache.
+ * Não faz nenhum cálculo. Só busca e parseia.
+ */
+import { useState, useEffect, useCallback } from 'react';
+import Papa from 'papaparse';
+import { csvUrl, GID } from '../config';
+
+async function fetchCSV(gid) {
+  const res = await fetch(csvUrl(gid));
+  if (!res.ok) throw new Error(`HTTP ${res.status} na aba GID ${gid}`);
+  const txt = await res.text();
+  const { data } = Papa.parse(txt, { skipEmptyLines: true });
+  return data; // array de arrays, linha 0 = cabeçalho
+}
+
+/**
+ * parseDate — sempre cria a data no fuso LOCAL (meio-dia) para evitar
+ * o bug clássico de UTC: new Date("2026-03-18") = meia-noite UTC = 21h BRT do dia 17.
+ * Suporta:
+ *   dd/mm/yyyy            → BR (mais comum no Sheets)
+ *   dd/mm/yyyy hh:mm:ss   → BR com hora (usa só a data, descarta hora)
+ *   yyyy-mm-dd            → ISO
+ */
+function parseDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+
+  const s = String(v).trim();
+  if (!s) return null;
+
+  // dd/mm/yyyy ou dd/mm/yyyy hh:mm:ss — extrai só a data, cria no fuso local
+  const brMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (brMatch) {
+    const [, d, m, y] = brMatch;
+    // new Date(year, month-1, day, 12) cria no fuso LOCAL ao meio-dia — seguro
+    return new Date(Number(y), Number(m)-1, Number(d), 12, 0, 0);
+  }
+
+  // yyyy-mm-dd — também cria no fuso local
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return new Date(Number(y), Number(m)-1, Number(d), 12, 0, 0);
+  }
+
+  // Fallback
+  const dt = new Date(s);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
+/**
+ * parseTimestamp — preserva data E hora no fuso local.
+ * Para "18/03/2026 19:01:57" retorna Date(2026,2,18,19,1,57) — hora real do envio.
+ */
+function parseTimestamp(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+
+  const s = String(v).trim();
+  // dd/mm/yyyy hh:mm:ss
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) {
+    const [, d, mo, y, h, min, sec] = m;
+    return new Date(Number(y), Number(mo)-1, Number(d), Number(h), Number(min), Number(sec||0));
+  }
+  // Fallback para só data
+  return parseDate(v);
+}
+
+export function useRawData() {
+  const [raw, setRaw]         = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(null);
+
+  const fetch_ = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      // Busca todas as abas em paralelo
+      const [rF1, rF2, rF3, rCtrl, rCad] = await Promise.all([
+        fetchCSV(GID.FORM1),
+        fetchCSV(GID.FORM2),
+        fetchCSV(GID.FORM3),
+        fetchCSV(GID.CONTROLE),
+        fetchCSV(GID.CADASTRO),
+      ]);
+
+      // --- FORM 1 (DADOS_FORM_REGISTRO) ---
+      // Col: A=timestamp, B=dataTrabalho, C=corretor, D=discador,
+      //      E=leads(APOSENTADA), F=agendDeclared, G=visitasDeclared, J=repiks,
+      //      L=Leads Salesforce, M=Leads Blip
+      // A coluna E foi aposentada. Os leads agora vêm separados por CRM em L e M;
+      // o total de leads é a soma dos dois.
+      const form1 = rF1.slice(1).map(r => {
+        const leadsSF   = Number(r[11]) || 0; // col L
+        const leadsBlip = Number(r[12]) || 0; // col M
+        return {
+          timestamp:   parseTimestamp(r[0]),  // col A: "18/03/2026 19:01:57" — preserva hora
+          data:        parseDate(r[1]),       // col B: "18/03/2026" — data do relatório
+          corretor:    String(r[2]||'').toUpperCase().trim(),
+          discador:    String(r[3]||''),
+          leadsSF,                            // leads Salesforce (col L)
+          leadsBlip,                          // leads Blip (col M)
+          leads:       leadsSF + leadsBlip,   // total = L + M
+          agendForm1:  Number(r[5])||0,
+          visitasForm1:Number(r[6])||0,
+          repiks:      Number(r[9])||0,
+        };
+      }).filter(r => r.data && r.corretor);
+
+      // --- FORM 2 (Form_Clientes_agendados) ---
+      // Col: A=timestamp, B=dataInput, C=corretor, D=cliente,
+      //      E=canal, F=dataVisita, H=SICAQ
+      const form2 = rF2.slice(1).map(r => ({
+        timestamp:  parseDate(r[0]),
+        dataInput:  parseDate(r[1]),
+        corretor:   String(r[2]||'').toUpperCase().trim(),
+        cliente:    String(r[3]||''),
+        canal:      String(r[4]||'').toUpperCase().trim(),
+        dataVisita: parseDate(r[5]),
+        sicaq:      String(r[7]||'').toUpperCase(),
+      })).filter(r => r.dataInput && r.corretor);
+
+      // --- FORM 3 (Form_Visita_realizada) ---
+      // Col: A=timestamp, B=dataVisita, C=corretor, E=resultado,
+      //      H=gerenteParticipou, J=canal
+      const form3 = rF3.slice(1).map(r => ({
+        timestamp:   parseDate(r[0]),
+        data:        parseDate(r[1]),
+        corretor:    String(r[2]||'').toUpperCase().trim(),
+        resultado:   String(r[4]||'').toUpperCase(),
+        gerente:     String(r[7]||'').toUpperCase(),
+        canal:       String(r[9]||'').toUpperCase().trim(),
+      })).filter(r => r.data && r.corretor);
+
+      // --- CONTROLE DIARIO ---
+      // Col: A=data, B=corretor, C=gerente, D=super, E=status
+      const controle = rCtrl.slice(1).map(r => ({
+        data:   parseDate(r[0]),
+        corretor: String(r[1]||'').toUpperCase().trim(),
+        gerente:  String(r[2]||'').toUpperCase().trim(),
+        super_:   String(r[3]||'').toUpperCase().trim(),
+        status:   String(r[4]||'').trim(),
+      })).filter(r => r.data && r.corretor);
+
+      // --- CADASTRO EQUIPE ---
+      // Col: A=id, B=nome, C=cargo, D=super, E=gerente, F=status
+      const cadastro = rCad.slice(1).map(r => ({
+        nome:   String(r[1]||'').toUpperCase().trim(),
+        cargo:  String(r[2]||'').trim(),
+        super_: String(r[3]||'').toUpperCase().trim(),
+        gerente:String(r[4]||'').toUpperCase().trim(),
+        status: String(r[5]||'').trim(),
+      })).filter(r => r.nome);
+
+      setRaw({ form1, form2, form3, controle, cadastro });
+      setLastUpdate(new Date());
+    } catch(e) {
+      setError(e.message);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetch_(); }, [fetch_]);
+  return { raw, loading, error, refetch: fetch_, lastUpdate };
+}
