@@ -88,17 +88,26 @@ export function useRawData() {
 
       // --- FORM 1 (DADOS_FORM_REGISTRO) ---
       // Col: A=timestamp, B=dataTrabalho, C=corretor, D=discador,
-      //      E=leads, F=agendDeclared, G=visitasDeclared, J=repiks
-      const form1 = rF1.slice(1).map(r => ({
-        timestamp:   parseTimestamp(r[0]),  // col A: "18/03/2026 19:01:57" — preserva hora
-        data:        parseDate(r[1]),       // col B: "18/03/2026" — data do relatório
-        corretor:    String(r[2]||'').toUpperCase().trim(),
-        discador:    String(r[3]||''),
-        leads:       Number(r[4])||0,
-        agendForm1:  Number(r[5])||0,
-        visitasForm1:Number(r[6])||0,
-        repiks:      Number(r[9])||0,
-      })).filter(r => r.data && r.corretor);
+      //      E=leads(APOSENTADA), F=agendDeclared, G=visitasDeclared, J=repiks,
+      //      L=Leads Salesforce, M=Leads Blip
+      // A coluna E foi aposentada. Os leads agora vêm separados por CRM em L e M;
+      // o total de leads é a soma dos dois.
+      const form1 = rF1.slice(1).map(r => {
+        const leadsSF   = Number(r[11]) || 0; // col L
+        const leadsBlip = Number(r[12]) || 0; // col M
+        return {
+          timestamp:   parseTimestamp(r[0]),  // col A: "18/03/2026 19:01:57" — preserva hora
+          data:        parseDate(r[1]),       // col B: "18/03/2026" — data do relatório
+          corretor:    String(r[2]||'').toUpperCase().trim(),
+          discador:    String(r[3]||''),
+          leadsSF,                            // leads Salesforce (col L)
+          leadsBlip,                          // leads Blip (col M)
+          leads:       leadsSF + leadsBlip,   // total = L + M
+          agendForm1:  Number(r[5])||0,
+          visitasForm1:Number(r[6])||0,
+          repiks:      Number(r[9])||0,
+        };
+      }).filter(r => r.data && r.corretor);
 
       // --- FORM 2 (Form_Clientes_agendados) ---
       // Col: A=timestamp, B=dataInput, C=corretor, D=cliente,
