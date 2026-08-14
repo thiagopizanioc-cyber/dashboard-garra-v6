@@ -149,7 +149,8 @@ export function P3_Gerencia({ data, controle, target, setTarget, setPage, getPho
       {cons && (
         <div className="kpi-grid kpi-grid-6">
           <KpiCard icon="👥" label="Corretores"    value={`${cons.ativos}/${cons.total}`} sub={`${cons.total-cons.ativos} sem dados`}/>
-          <KpiCard icon="📞" label="Leads"          value={cons.leads}/>
+          <KpiCard icon="📞" label="Leads"          value={cons.leads}
+            sub={<><span style={{color:'#f59e0b',fontWeight:700}}>SF {cons.leadsSF}</span>{' · '}<span style={{color:'#3b82f6',fontWeight:700}}>Blip {cons.leadsBlip}</span></>}/>
           <KpiCard icon="📅" label="Agendamentos"   value={cons.agend}    sub={fmt.pct(cons.txLeadAgend)} gold/>
           <KpiCard icon="🏠" label="Visitas"        value={cons.visitas}  sub={fmt.pct(cons.txAgendVisita)} gold/>
           <KpiCard icon="📝" label="Proposta"       value={cons.propostas||0} sub="Intenção de compra"/>

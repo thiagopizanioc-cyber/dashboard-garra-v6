@@ -121,7 +121,7 @@ export function P1_Diretoria({ data, setPage, setTarget,
       {/* KPIs dos Forms — sempre visíveis */}
       <div className="kpi-grid kpi-grid-6">
         <KpiCard icon="👥" label="Corretores"       value={`${total.ativos}/${total.total}`} sub={`${total.total-total.ativos} sem registro`}/>
-        <KpiCard icon="📞" label="Leads"             value={total.leads}     sub={`SF ${total.leadsSF} · Blip ${total.leadsBlip} · média ${fmt.num(total.leads/Math.max(1,total.ativos),1)}`}/>
+        <KpiCard icon="📞" label="Leads"             value={total.leads}     sub={<><span style={{color:'#f59e0b',fontWeight:700}}>SF {total.leadsSF}</span>{' · '}<span style={{color:'#3b82f6',fontWeight:700}}>Blip {total.leadsBlip}</span>{` · média ${fmt.num(total.leads/Math.max(1,total.ativos),1)}`}</>}/>
         <KpiCard icon="📅" label="Agendamentos"      value={total.agend}     sub={`Taxa ${fmt.pct(total.txLeadAgend)}`} gold/>
         <KpiCard icon="🏠" label="Visitas"           value={total.visitas}   sub={`Taxa ${fmt.pct(total.txAgendVisita)}`} gold/>
         <KpiCard icon="📝" label="Proposta Assinada" value={total.propostas} sub={`Conv. ${fmt.pct(total.txConvProp)}`}/>
@@ -177,21 +177,26 @@ export function P1_Diretoria({ data, setPage, setTarget,
       <div className="row-2">
         <Card title="⚡ Funil Completo da Operação">
           <FunilBar steps={[
-            {label:'Leads',             value:total.leads,    color:'#f59e0b',
-              sub: `SF ${total.leadsSF} · Blip ${total.leadsBlip}`,
-              segments: [
-                {label:'Salesforce', value:total.leadsSF,   color:'#f59e0b'},
-                {label:'Blip',       value:total.leadsBlip, color:'#3b82f6'},
-              ]},
-            {label:'Agendamentos',      value:total.agend,    color:'#fb923c'},
-            {label:'Visitas',           value:total.visitas,  color:'#f97316'},
+            {label:'Leads', value:total.leads, color:'#f59e0b',
+              crm:{sf:total.leadsSF, blip:total.leadsBlip},
+              segments:[{value:total.leadsSF,color:'#f59e0b'},{value:total.leadsBlip,color:'#3b82f6'}]},
+            {label:'Agendamentos', value:total.agend, color:'#fb923c',
+              crm:{sf:total.agendSF, blip:total.agendBlip},
+              segments:[{value:total.agendSF,color:'#f59e0b'},{value:total.agendBlip,color:'#3b82f6'}]},
+            {label:'Visitas', value:total.visitas, color:'#f97316',
+              crm:{sf:total.visitasSF, blip:total.visitasBlip},
+              segments:[{value:total.visitasSF,color:'#f59e0b'},{value:total.visitasBlip,color:'#3b82f6'}]},
             {label:'Proposta Assinada',
               value: extProp ?? total.propostas,
               sub:   extProp != null ? total.propostas : null,
+              crm: extProp != null ? null : {sf:total.propSF, blip:total.propBlip},
+              segments: extProp != null ? null : [{value:total.propSF,color:'#f59e0b'},{value:total.propBlip,color:'#3b82f6'}],
               color:'#ef4444'},
             {label:'Pré-Venda',
               value: extPre ?? total.preVendas,
               sub:   extPre != null ? total.preVendas : null,
+              crm: extPre != null ? null : {sf:total.pvSF, blip:total.pvBlip},
+              segments: extPre != null ? null : [{value:total.pvSF,color:'#f59e0b'},{value:total.pvBlip,color:'#3b82f6'}],
               color:'#a855f7'},
             {label:'Venda SV',
               value: extSV ?? total.vendaSV,

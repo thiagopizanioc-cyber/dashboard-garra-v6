@@ -173,12 +173,22 @@ function PerformanceBlock({ c, media, vendas }) {
   return (
     <Card title="🏆 Funil Pessoal">
       <FunilBar steps={[
-        {label:'Leads',             value:c.leads,        color:'#f59e0b'},
-        {label:'Agend.',            value:c.agendForm2,   color:'#fb923c'},
-        {label:'Visitas',           value:c.visitasForm3, color:'#f97316'},
-        {label:'Proposta Assinada', value:c.propostas||0, color:'#ef4444'},
-        {label:'Pré-Venda',         value:c.preVendas,    color:'#a855f7'},
-        {label:'Venda SV',          value:svExt !== null ? svExt : (c.vendaSV||0), color:'#22c55e'},
+        {label:'Leads', value:c.leads, color:'#f59e0b',
+          crm:{sf:c.leadsSF, blip:c.leadsBlip},
+          segments:[{value:c.leadsSF,color:'#f59e0b'},{value:c.leadsBlip,color:'#3b82f6'}]},
+        {label:'Agend.', value:c.agendForm2, color:'#fb923c',
+          crm:{sf:c.agendSF, blip:c.agendBlip},
+          segments:[{value:c.agendSF,color:'#f59e0b'},{value:c.agendBlip,color:'#3b82f6'}]},
+        {label:'Visitas', value:c.visitasForm3, color:'#f97316',
+          crm:{sf:c.visitasSF, blip:c.visitasBlip},
+          segments:[{value:c.visitasSF,color:'#f59e0b'},{value:c.visitasBlip,color:'#3b82f6'}]},
+        {label:'Proposta Assinada', value:c.propostas||0, color:'#ef4444',
+          crm:{sf:c.propSF, blip:c.propBlip},
+          segments:[{value:c.propSF,color:'#f59e0b'},{value:c.propBlip,color:'#3b82f6'}]},
+        {label:'Pré-Venda', value:c.preVendas, color:'#a855f7',
+          crm:{sf:c.pvSF, blip:c.pvBlip},
+          segments:[{value:c.pvSF,color:'#f59e0b'},{value:c.pvBlip,color:'#3b82f6'}]},
+        {label:'Venda SV', value:svExt !== null ? svExt : (c.vendaSV||0), color:'#22c55e'},
       ]}/>
       {svExt === null && (
         <div className="funil-hint" style={{marginTop:6}}>

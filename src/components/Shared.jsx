@@ -68,7 +68,14 @@ export function FunilBar({ steps }) {
               <span className="funil-label">{s.label}</span>
               <span className="funil-val" style={{color:s.color}}>
                 {s.value}
-                {s.sub != null && (
+                {s.crm && (s.crm.sf>0 || s.crm.blip>0) && (
+                  <span className="funil-val-sub">
+                    {' '}<span style={{color:'#f59e0b',fontWeight:700}}>SF {s.crm.sf}</span>
+                    <span style={{opacity:.5}}> · </span>
+                    <span style={{color:'#3b82f6',fontWeight:700}}>Blip {s.crm.blip}</span>
+                  </span>
+                )}
+                {s.sub != null && !s.crm && (
                   <span className="funil-val-sub"> ({s.sub})</span>
                 )}
               </span>

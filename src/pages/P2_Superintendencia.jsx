@@ -55,7 +55,8 @@ export function P2_Superintendencia({ data, target, setTarget, setPage, getPhoto
 
         <div className="kpi-grid kpi-grid-5">
           <KpiCard icon="👥" label="Corretores"  value={`${cons.ativos}/${cons.total}`} sub={`${cons.total-cons.ativos} sem registro`}/>
-          <KpiCard icon="📞" label="Leads"        value={cons.leads}    sub={`SF ${cons.leadsSF} · Blip ${cons.leadsBlip} · Repiks ${cons.repiks}`}/>
+          <KpiCard icon="📞" label="Leads"        value={cons.leads}
+            sub={<><span style={{color:'#f59e0b',fontWeight:700}}>SF {cons.leadsSF}</span>{' · '}<span style={{color:'#3b82f6',fontWeight:700}}>Blip {cons.leadsBlip}</span>{` · Repiks ${cons.repiks}`}</>}/>
           <KpiCard icon="📅" label="Agendamentos" value={cons.agend}    sub={`Taxa ${fmt.pct(cons.txLeadAgend)}`} gold/>
           <KpiCard icon="🏠" label="Visitas"      value={cons.visitas}  sub={`Taxa ${fmt.pct(cons.txAgendVisita)}`} gold/>
           <KpiCard icon="🏆" label="Pré-Vendas"   value={cons.preVendas} sub={`Conv. ${fmt.pct(cons.txConv)}`} gold/>
@@ -66,10 +67,18 @@ export function P2_Superintendencia({ data, target, setTarget, setPage, getPhoto
         <div className="row-2">
           <Card title="⚡ Funil da Superintendência">
             <FunilBar steps={[
-              {label:'Leads',       value:cons.leads,     color:'#f59e0b'},
-              {label:'Agendamentos',value:cons.agend,     color:'#fb923c'},
-              {label:'Visitas',     value:cons.visitas,   color:'#f97316'},
-              {label:'Pré-Vendas',  value:cons.preVendas, color:'#ea580c'},
+              {label:'Leads', value:cons.leads, color:'#f59e0b',
+                crm:{sf:cons.leadsSF, blip:cons.leadsBlip},
+                segments:[{value:cons.leadsSF,color:'#f59e0b'},{value:cons.leadsBlip,color:'#3b82f6'}]},
+              {label:'Agendamentos', value:cons.agend, color:'#fb923c',
+                crm:{sf:cons.agendSF, blip:cons.agendBlip},
+                segments:[{value:cons.agendSF,color:'#f59e0b'},{value:cons.agendBlip,color:'#3b82f6'}]},
+              {label:'Visitas', value:cons.visitas, color:'#f97316',
+                crm:{sf:cons.visitasSF, blip:cons.visitasBlip},
+                segments:[{value:cons.visitasSF,color:'#f59e0b'},{value:cons.visitasBlip,color:'#3b82f6'}]},
+              {label:'Pré-Vendas', value:cons.preVendas, color:'#ea580c',
+                crm:{sf:cons.pvSF, blip:cons.pvBlip},
+                segments:[{value:cons.pvSF,color:'#f59e0b'},{value:cons.pvBlip,color:'#3b82f6'}]},
             ]}/>
           </Card>
 

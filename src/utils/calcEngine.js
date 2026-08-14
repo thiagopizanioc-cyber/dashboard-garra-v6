@@ -73,6 +73,9 @@ function calcularCorretor(raw, nome, ini, fim) {
   const m = {
     diasTrabalhados: 0, folgas: 0, antes20h: 0, ate00h: 0, retroativo: 0,
     leads: 0, leadsSF: 0, leadsBlip: 0, tempoDiscador: 0, repiks: 0,
+    // Funil por CRM (Salesforce / Blip) em cada etapa
+    agendSF: 0, agendBlip: 0, visitasSF: 0, visitasBlip: 0,
+    propSF: 0, propBlip: 0, pvSF: 0, pvBlip: 0,
     agendForm1: 0, agendForm2: 0, agendadosParaOPeriodo: 0, sicaqAprovados: 0,
     visitasForm1: 0, visitasForm3: 0,
     propostas: 0, preVendas: 0, vendaSV: 0, conversoesTotal: 0,
@@ -104,6 +107,10 @@ function calcularCorretor(raw, nome, ini, fim) {
       if (r.sicaq.includes('SIM') || r.sicaq.includes('APROVADO')) m.sicaqAprovados++;
       const key = normalizarCanal(r.canal);
       m.canaisAg[key] = (m.canaisAg[key]||0) + 1;
+      // CRM do agendamento (Form2 col I)
+      const crm = String(r.crm||'').toUpperCase();
+      if (crm.includes('SALES')) m.agendSF++;
+      else if (crm.includes('BLIP')) m.agendBlip++;
     }
     // Visitas agendadas para cair no período
     if (r.dataVisita && inRange(r.dataVisita, iniD, fimLogica)) {
@@ -116,6 +123,11 @@ function calcularCorretor(raw, nome, ini, fim) {
     if (r.corretor !== nome) continue;
     if (!inRange(r.data, iniD, fimLogica)) continue;
     m.visitasForm3++;
+    // CRM da visita (Form3 col L, herdado do Form2)
+    const crmV = String(r.crm||'').toUpperCase();
+    const ehSF = crmV.includes('SALES');
+    const ehBlip = crmV.includes('BLIP');
+    if (ehSF) m.visitasSF++; else if (ehBlip) m.visitasBlip++;
 
     const res = r.resultado;
     // Detecta Venda SV (mais específico primeiro)
@@ -129,8 +141,8 @@ function calcularCorretor(raw, nome, ini, fim) {
 
     if (conv) {
       m.conversoesTotal++;
-      if (isProposta) m.propostas++;
-      if (isPreVenda) m.preVendas++;
+      if (isProposta) { m.propostas++; if (ehSF) m.propSF++; else if (ehBlip) m.propBlip++; }
+      if (isPreVenda) { m.preVendas++; if (ehSF) m.pvSF++; else if (ehBlip) m.pvBlip++; }
       if (isVendaSV)  m.vendaSV++;
       const key = normalizarCanal(r.canal);
       m.canaisVs[key] = (m.canaisVs[key]||0) + 1;
@@ -266,6 +278,9 @@ export function calcularData(raw, ini, fim) {
         streak: m.streak,
         // Atividade
         leads: m.leads, leadsSF: m.leadsSF, leadsBlip: m.leadsBlip,
+        agendSF: m.agendSF, agendBlip: m.agendBlip,
+        visitasSF: m.visitasSF, visitasBlip: m.visitasBlip,
+        propSF: m.propSF, propBlip: m.propBlip, pvSF: m.pvSF, pvBlip: m.pvBlip,
         tempoDiscador: m.tempoDiscador, repiks: m.repiks,
         // Funil
         agendForm1: m.agendForm1, agendForm2: m.agendForm2,
