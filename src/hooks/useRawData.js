@@ -124,14 +124,15 @@ export function useRawData() {
 
       // --- FORM 3 (Form_Visita_realizada) ---
       // Col: A=timestamp, B=dataVisita, C=corretor, E=resultado,
-      //      H=gerenteParticipou, J=canal
+      //      H=gerenteParticipou, I=nomeCliente, J=dataAgend, K=canal, L=CRM
       const form3 = rF3.slice(1).map(r => ({
         timestamp:   parseDate(r[0]),
         data:        parseDate(r[1]),
         corretor:    String(r[2]||'').toUpperCase().trim(),
         resultado:   String(r[4]||'').toUpperCase(),
         gerente:     String(r[7]||'').toUpperCase(),
-        canal:       String(r[9]||'').toUpperCase().trim(),
+        canal:       String(r[10]||'').toUpperCase().trim(), // col K (era r[9]=data, errado)
+        crm:         String(r[11]||'').trim(),               // col L: CRM herdado do Form2
       })).filter(r => r.data && r.corretor);
 
       // --- CONTROLE DIARIO ---
