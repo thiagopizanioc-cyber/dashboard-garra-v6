@@ -111,7 +111,7 @@ export function useRawData() {
 
       // --- FORM 2 (Form_Clientes_agendados) ---
       // Col: A=timestamp, B=dataInput, C=corretor, D=cliente,
-      //      E=canal, F=dataVisita, H=SICAQ
+      //      E=canal, F=dataVisita, H=SICAQ, I=CRM
       const form2 = rF2.slice(1).map(r => ({
         timestamp:  parseDate(r[0]),
         dataInput:  parseDate(r[1]),
@@ -120,6 +120,7 @@ export function useRawData() {
         canal:      String(r[4]||'').toUpperCase().trim(),
         dataVisita: parseDate(r[5]),
         sicaq:      String(r[7]||'').toUpperCase(),
+        crm:        String(r[8]||'').trim(),  // col I: CRM de Origem
       })).filter(r => r.dataInput && r.corretor);
 
       // --- FORM 3 (Form_Visita_realizada) ---
