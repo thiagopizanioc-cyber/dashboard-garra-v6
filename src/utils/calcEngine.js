@@ -72,7 +72,7 @@ function calcularCorretor(raw, nome, ini, fim) {
 
   const m = {
     diasTrabalhados: 0, folgas: 0, antes20h: 0, ate00h: 0, retroativo: 0,
-    leads: 0, tempoDiscador: 0, repiks: 0,
+    leads: 0, leadsSF: 0, leadsBlip: 0, tempoDiscador: 0, repiks: 0,
     agendForm1: 0, agendForm2: 0, agendadosParaOPeriodo: 0, sicaqAprovados: 0,
     visitasForm1: 0, visitasForm3: 0,
     propostas: 0, preVendas: 0, vendaSV: 0, conversoesTotal: 0,
@@ -86,6 +86,8 @@ function calcularCorretor(raw, nome, ini, fim) {
   for (const r of form1) {
     if (r.corretor === nome && inRange(r.data, iniD, fimLogica)) {
       m.leads        += r.leads;
+      m.leadsSF      += r.leadsSF || 0;
+      m.leadsBlip    += r.leadsBlip || 0;
       m.tempoDiscador += extrairMinutos(r.discador);
       m.agendForm1   += r.agendForm1;
       m.visitasForm1 += r.visitasForm1;
@@ -263,7 +265,8 @@ export function calcularData(raw, ini, fim) {
         antes20h: m.antes20h, ate00h: m.ate00h, retroativo: m.retroativo,
         streak: m.streak,
         // Atividade
-        leads: m.leads, tempoDiscador: m.tempoDiscador, repiks: m.repiks,
+        leads: m.leads, leadsSF: m.leadsSF, leadsBlip: m.leadsBlip,
+        tempoDiscador: m.tempoDiscador, repiks: m.repiks,
         // Funil
         agendForm1: m.agendForm1, agendForm2: m.agendForm2,
         divAgend: m.divAgend, visitasForm1: m.visitasForm1,

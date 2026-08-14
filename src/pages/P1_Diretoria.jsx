@@ -121,11 +121,11 @@ export function P1_Diretoria({ data, setPage, setTarget,
       {/* KPIs dos Forms — sempre visíveis */}
       <div className="kpi-grid kpi-grid-6">
         <KpiCard icon="👥" label="Corretores"       value={`${total.ativos}/${total.total}`} sub={`${total.total-total.ativos} sem registro`}/>
-        <KpiCard icon="📞" label="Leads"             value={total.leads}     sub={`Média ${fmt.num(total.leads/Math.max(1,total.ativos),1)}/corretor`}/>
+        <KpiCard icon="📞" label="Leads"             value={total.leads}     sub={`SF ${total.leadsSF} · Blip ${total.leadsBlip} · média ${fmt.num(total.leads/Math.max(1,total.ativos),1)}`}/>
         <KpiCard icon="📅" label="Agendamentos"      value={total.agend}     sub={`Taxa ${fmt.pct(total.txLeadAgend)}`} gold/>
-        <KpiCard icon="🏠" label="Visitas"           value={total.visitas}   sub={`Conv. ${fmt.pct(total.txConv)}`} gold/>
-        <KpiCard icon="📝" label="Proposta Assinada" value={total.propostas} sub="Form 3"/>
-        <KpiCard icon="⏳" label="Pré-Vendas"        value={total.preVendas} sub="SICAQ + entrada" gold/>
+        <KpiCard icon="🏠" label="Visitas"           value={total.visitas}   sub={`Taxa ${fmt.pct(total.txAgendVisita)}`} gold/>
+        <KpiCard icon="📝" label="Proposta Assinada" value={total.propostas} sub={`Conv. ${fmt.pct(total.txConvProp)}`}/>
+        <KpiCard icon="⏳" label="Pré-Vendas"        value={total.preVendas} sub={`Conv. ${fmt.pct(total.txConvPV)}`} gold/>
       </div>
 
       {/* Barra Power BI — aparece após sync, ordem: VGV, Recebimento, Venda SV, Pré-Vendas, Propostas */}
@@ -177,7 +177,12 @@ export function P1_Diretoria({ data, setPage, setTarget,
       <div className="row-2">
         <Card title="⚡ Funil Completo da Operação">
           <FunilBar steps={[
-            {label:'Leads',             value:total.leads,    color:'#f59e0b'},
+            {label:'Leads',             value:total.leads,    color:'#f59e0b',
+              sub: `SF ${total.leadsSF} · Blip ${total.leadsBlip}`,
+              segments: [
+                {label:'Salesforce', value:total.leadsSF,   color:'#f59e0b'},
+                {label:'Blip',       value:total.leadsBlip, color:'#3b82f6'},
+              ]},
             {label:'Agendamentos',      value:total.agend,    color:'#fb923c'},
             {label:'Visitas',           value:total.visitas,  color:'#f97316'},
             {label:'Proposta Assinada',

@@ -20,12 +20,14 @@ export function P2_Superintendencia({ data, target, setTarget, setPage, getPhoto
 
   const alertas = pontosDeAtencao(listaSuper, media);
 
+  // c = objeto de consolidar(): tem agend/visitas/preVendas/txConv/engajamento
+  // (NÃO tem agendForm2/visitasForm3/antes20h — esses são do objeto de corretor).
   const metricas = [
-    { key:'agend',       label:'Agend.',    fn:c=>c.agendForm2 },
-    { key:'visitas',     label:'Visitas',   fn:c=>c.visitasForm3 },
+    { key:'agend',       label:'Agend.',    fn:c=>c.agend },
+    { key:'visitas',     label:'Visitas',   fn:c=>c.visitas },
     { key:'preVendas',   label:'Pré-Venda', fn:c=>c.preVendas },
     { key:'txConv',      label:'Conv.',     fn:c=>c.txConv, pct:true },
-    { key:'engajamento', label:'Engaj.',    fn:c=>c.diasTrabalhados>0?(c.antes20h+c.ate00h)/c.diasTrabalhados:0, pct:true },
+    { key:'engajamento', label:'Engaj.',    fn:c=>c.engajamento, pct:true },
   ];
 
   return (
@@ -53,7 +55,7 @@ export function P2_Superintendencia({ data, target, setTarget, setPage, getPhoto
 
         <div className="kpi-grid kpi-grid-5">
           <KpiCard icon="👥" label="Corretores"  value={`${cons.ativos}/${cons.total}`} sub={`${cons.total-cons.ativos} sem registro`}/>
-          <KpiCard icon="📞" label="Leads"        value={cons.leads}    sub={`Repiks: ${cons.repiks}`}/>
+          <KpiCard icon="📞" label="Leads"        value={cons.leads}    sub={`SF ${cons.leadsSF} · Blip ${cons.leadsBlip} · Repiks ${cons.repiks}`}/>
           <KpiCard icon="📅" label="Agendamentos" value={cons.agend}    sub={`Taxa ${fmt.pct(cons.txLeadAgend)}`} gold/>
           <KpiCard icon="🏠" label="Visitas"      value={cons.visitas}  sub={`Taxa ${fmt.pct(cons.txAgendVisita)}`} gold/>
           <KpiCard icon="🏆" label="Pré-Vendas"   value={cons.preVendas} sub={`Conv. ${fmt.pct(cons.txConv)}`} gold/>
@@ -127,7 +129,18 @@ export function P2_Superintendencia({ data, target, setTarget, setPage, getPhoto
                       <td>{c.ativos}/{c.total}</td>
                       {metricas.map(m => {
                         const val = m.fn({...c});
-                        const nv = semaforo(val, media[m.key]||0, false);
+                        // 'media' é a média POR CORRETOR (chaves agendForm2/visitasForm3...).
+                        // Como aqui comparamos totais de gerência, usamos a média do time
+                        // multiplicada pelo nº de corretores como referência do semáforo.
+                        const mediaRef = {
+                          agend:       (media.agendForm2||0)   * c.total,
+                          visitas:     (media.visitasForm3||0) * c.total,
+                          preVendas:   (media.preVendas||0)    * c.total,
+                          txConv:      media.taxaVisitaConv||0,
+                          engajamento: media.diasTrabalhados>0
+                            ? (media.antes20h+media.ate00h)/media.diasTrabalhados : 0,
+                        }[m.key] || 0;
+                        const nv = semaforo(val, mediaRef, false);
                         return (
                           <td key={m.key}>
                             <div className="cell-sem">

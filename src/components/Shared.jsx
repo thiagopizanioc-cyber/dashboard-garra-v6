@@ -75,7 +75,17 @@ export function FunilBar({ steps }) {
               {taxa!==null && <span className="funil-taxa">→ {fmt.pct(taxa)}</span>}
             </div>
             <div className="funil-bg">
-              <div className="funil-fill" style={{width:`${(s.value/max)*100}%`, background:s.color}} />
+              {s.segments ? (
+                <div className="funil-fill-split" style={{width:`${(s.value/max)*100}%`, display:'flex', height:'100%', borderRadius:'inherit', overflow:'hidden'}}>
+                  {s.segments.map((seg,si) => (
+                    <div key={si}
+                      title={`${seg.label}: ${seg.value}`}
+                      style={{width:`${s.value>0?(seg.value/s.value)*100:0}%`, background:seg.color}} />
+                  ))}
+                </div>
+              ) : (
+                <div className="funil-fill" style={{width:`${(s.value/max)*100}%`, background:s.color}} />
+              )}
             </div>
           </div>
         );

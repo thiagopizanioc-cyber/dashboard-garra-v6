@@ -55,6 +55,8 @@ export function consolidar(lista) {
   const sum = (fn) => lista.reduce((s,c)=>s+fn(c),0);
   const avg = (fn) => ativos.length ? ativos.reduce((s,c)=>s+fn(c),0)/ativos.length : 0;
   const totalLeads  = sum(c=>c.leads);
+  const totalLeadsSF   = sum(c=>c.leadsSF||0);
+  const totalLeadsBlip = sum(c=>c.leadsBlip||0);
   const totalAgend  = sum(c=>c.agendForm2);
   const totalVis    = sum(c=>c.visitasForm3);
   const totalPV       = sum(c=>c.preVendas);
@@ -62,11 +64,14 @@ export function consolidar(lista) {
   const totalVendaSV  = sum(c=>c.vendaSV||0);
   return {
     total: lista.length, ativos: ativos.length,
-    leads: totalLeads, agend: totalAgend, visitas: totalVis,
+    leads: totalLeads, leadsSF: totalLeadsSF, leadsBlip: totalLeadsBlip,
+    agend: totalAgend, visitas: totalVis,
     propostas: totalProp, preVendas: totalPV, vendaSV: totalVendaSV,
     txLeadAgend:   totalLeads  > 0 ? totalAgend/totalLeads  : 0,
     txAgendVisita: totalAgend  > 0 ? totalVis/totalAgend    : 0,
     txConv:        totalVis    > 0 ? (totalProp+totalPV+totalVendaSV)/totalVis : 0,
+    txConvProp:    totalVis    > 0 ? totalProp/totalVis : 0,
+    txConvPV:      totalVis    > 0 ? totalPV/totalVis   : 0,
     engajamento:   avg(c => c.diasTrabalhados > 0
       ? (c.antes20h+c.ate00h)/c.diasTrabalhados : 0),
     repiks:        sum(c=>c.repiks),
