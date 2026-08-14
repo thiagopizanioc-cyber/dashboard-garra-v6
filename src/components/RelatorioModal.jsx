@@ -47,19 +47,31 @@ Responda SOMENTE no formato JSON abaixo (sem markdown, sem explicações fora do
   "pauta": ["pergunta 1 para reunião com gerente", "pergunta 2", "pergunta 3", "pergunta 4"]
 }`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
-      }),
+  // Chamada ao Gemini com retry: 503/429/500 são temporários (servidor sobrecarregado)
+  let res;
+  const maxTentativas = 3;
+  for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+        }),
+      }
+    );
+    if (res.ok) break;
+    // temporários: espera e tenta de novo
+    if ((res.status === 503 || res.status === 429 || res.status === 500) && tentativa < maxTentativas) {
+      await new Promise(r => setTimeout(r, 2000));
+      continue;
     }
-  );
+    break;
+  }
 
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  if (!res.ok) throw new Error(`API error: ${res.status}${res.status === 503 ? ' (servidor ocupado, tente de novo em instantes)' : ''}`);
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
   // Remove markdown fences e extrai só o JSON

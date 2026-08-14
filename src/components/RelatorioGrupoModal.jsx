@@ -39,18 +39,28 @@ Responda SOMENTE no JSON (sem markdown):
   "pauta": ["ação 1 prioritária", "ação 2", "ação 3", "ação 4"]
 }`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
-      }),
+  let res;
+  const maxTentativas = 3;
+  for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+        }),
+      }
+    );
+    if (res.ok) break;
+    if ((res.status === 503 || res.status === 429 || res.status === 500) && tentativa < maxTentativas) {
+      await new Promise(r => setTimeout(r, 2000));
+      continue;
     }
-  );
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
+    break;
+  }
+  if (!res.ok) throw new Error(`API error: ${res.status}${res.status === 503 ? ' (servidor ocupado, tente de novo em instantes)' : ''}`);
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
   return JSON.parse(text.replace(/```json|```/g, '').trim());
