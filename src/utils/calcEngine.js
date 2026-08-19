@@ -1,7 +1,18 @@
 /**
  * calcEngine.js — Motor de cálculo idêntico ao popularMetricasPeriodoV3 do GAS.
  * Recebe dados brutos + período e devolve o mesmo objeto `data` que o app já usa.
+ *
+ * ADIÇÕES DESTA VERSÃO (régua de score por processo):
+ *  - diasElegiveis    → dias em que o corretor JÁ existia no CONTROLE e o SUP já
+ *                       estava sob cobrança (resolve novato e rollout escalonado)
+ *  - maiorSeqFolgas   → maior sequência de folgas encadeadas no período
+ *  - corujao          → preenchimentos pós-20h na quinta-feira (apontamento positivo)
+ *  - supAtivo         → se a superintendência já entrou na régua
+ *  - data.referencia  → medianas do time (leads/dia, agend/dia, taxa) para o score
+ *  - data.iniciosSup  → data de ativação de cada SUP
  */
+
+import { SCORE_CFG, mediana } from './scoreConfig';
 
 const CANAIS = [
   'LEADS NOVOS','GOOGLE ADS FALECONOSCO','FACEBOOK FALECONOSCO','RD GOLD','FACEBOOK RD GOLD',
@@ -44,16 +55,23 @@ function inRange(date, ini, fim) {
   return d >= ini && d <= fim;
 }
 
+// --- Classificação de status do CONTROLE_DIARIO (tolerante a emoji e sufixo de hora) ---
+function ehFolga(s)      { return String(s||'').toLowerCase().includes('folga'); }
+function ehPendente(s)   { return String(s||'').toLowerCase().includes('pendente'); }
+function ehNoPrazo(s)    { return String(s||'').includes('No Prazo'); }
+function ehPos20h(s)     { return String(s||'').includes('Atrasado'); }
+function ehRetroativo(s) { return String(s||'').includes('Retroativo'); }
+
 // Cálculo de streak (igual ao calcularStreakReal do GAS)
 function calcularStreak(controle, corretor) {
   const linhasCorretor = controle
     .filter(r => r.corretor === corretor)
     .sort((a,b) => b.data - a.data);
-  
+
   const ontem = new Date(); ontem.setDate(ontem.getDate()-1); ontem.setHours(0,0,0,0);
-  
+
   for (const r of linhasCorretor) {
-    if (r.status.toLowerCase().includes('folga')) {
+    if (ehFolga(r.status)) {
       const diff = Math.floor((ontem - d0(r.data)) / 86400000);
       return Math.max(0, diff);
     }
@@ -62,16 +80,56 @@ function calcularStreak(controle, corretor) {
 }
 
 /**
+ * Data de ativação de cada SUP: primeiro dia com preenchimento REAL.
+ * Trava: precisa de N corretores no mesmo dia OU N dias consecutivos com registro,
+ * para não ligar a cobrança de uma equipe inteira por causa de 1 curioso.
+ */
+function calcularIniciosSup(controle) {
+  const A = SCORE_CFG.ativacaoSup;
+  const porSup = {};
+
+  for (const r of controle) {
+    if (!r.data || !r.super_) continue;
+    if (ehFolga(r.status) || ehPendente(r.status) || !r.status) continue;
+    const dia = d0(r.data).getTime();
+    (porSup[r.super_] = porSup[r.super_] || {});
+    porSup[r.super_][dia] = (porSup[r.super_][dia] || 0) + 1;
+  }
+
+  const inicios = {};
+  for (const [sup, dias] of Object.entries(porSup)) {
+    const chaves = Object.keys(dias).map(Number).sort((a,b) => a-b);
+    let inicio = null;
+    for (let i = 0; i < chaves.length; i++) {
+      if (dias[chaves[i]] >= A.minCorretoresNoDia) { inicio = chaves[i]; break; }
+      // N dias consecutivos com qualquer preenchimento
+      let seq = 1;
+      for (let j = i+1; j < chaves.length && (chaves[j] - chaves[j-1]) <= 86400000*1.5; j++) seq++;
+      if (seq >= A.minDiasConsecutivos) { inicio = chaves[i]; break; }
+    }
+    if (inicio !== null) inicios[sup] = new Date(inicio);
+  }
+
+  // Override manual do scoreConfig tem prioridade
+  for (const [sup, iso] of Object.entries(SCORE_CFG.overrideInicioSup || {})) {
+    const d = new Date(iso);
+    if (!isNaN(d.getTime())) inicios[String(sup).toUpperCase()] = d0(d);
+  }
+  return inicios;
+}
+
+/**
  * Calcula métricas de UM corretor para um período.
  * Lógica idêntica à popularMetricasPeriodoV3 do GAS.
  */
-function calcularCorretor(raw, nome, ini, fim) {
+function calcularCorretor(raw, nome, ini, fim, inicioSup) {
   const { form1, form2, form3, controle } = raw;
   const iniD = d0(ini); const fimD = d0(fim);
   const fimLogica = new Date(fim); fimLogica.setHours(23,59,59,999);
 
   const m = {
     diasTrabalhados: 0, folgas: 0, antes20h: 0, ate00h: 0, retroativo: 0,
+    diasElegiveis: 0, maiorSeqFolgas: 0, corujao: 0,
     leads: 0, leadsSF: 0, leadsBlip: 0, tempoDiscador: 0, repiks: 0,
     // Funil por CRM (Salesforce / Blip) em cada etapa
     agendSF: 0, agendBlip: 0, visitasSF: 0, visitasBlip: 0,
@@ -153,18 +211,33 @@ function calcularCorretor(raw, nome, ini, fim) {
     }
   }
 
-  // CONTROLE_DIARIO — disciplina
-  for (const r of controle) {
-    if (r.corretor !== nome) continue;
-    if (!inRange(r.data, iniD, fimLogica)) continue;
+  // CONTROLE_DIARIO — disciplina, elegibilidade e sequência de folgas
+  const linhas = controle
+    .filter(r => r.corretor === nome && inRange(r.data, iniD, fimLogica))
+    .filter(r => !inicioSup || d0(r.data) >= d0(inicioSup))
+    .sort((a,b) => d0(a.data) - d0(b.data));
+
+  let seqAtual = 0;
+  for (const r of linhas) {
+    m.diasElegiveis++;
     const s = r.status;
-    if (s.toLowerCase().includes('folga')) {
+    if (ehFolga(s)) {
       m.folgas++;
-    } else if (!s.toLowerCase().includes('pendente')) {
-      m.diasTrabalhados++;
-      if (s.includes('No Prazo'))    m.antes20h++;
-      else if (s.includes('Atrasado'))   m.ate00h++;
-      else if (s.includes('Retroativo')) m.retroativo++;
+      seqAtual++;
+      if (seqAtual > m.maiorSeqFolgas) m.maiorSeqFolgas = seqAtual;
+      continue;
+    }
+    seqAtual = 0;
+    if (ehPendente(s) || !s) continue;
+    m.diasTrabalhados++;
+    if (ehNoPrazo(s)) {
+      m.antes20h++;
+    } else if (ehPos20h(s)) {
+      m.ate00h++;
+      // Quinta-feira = corujão (apontamento positivo)
+      if (d0(r.data).getDay() === 4) m.corujao++;
+    } else if (ehRetroativo(s)) {
+      m.retroativo++;
     }
   }
 
@@ -263,11 +336,13 @@ export function calcularData(raw, ini, fim) {
   const dataFim    = d0(fim).toLocaleDateString('pt-BR');
 
   const hier = buildHierarquia(raw, iniD, fimLogica);
+  const iniciosSup = calcularIniciosSup(raw.controle);
 
   // Calcula todos os corretores que aparecem na hierarquia
   const corretores = Object.entries(hier)
     .map(([nome, h]) => {
-      const m = calcularCorretor(raw, nome, ini, fim);
+      const inicioSup = iniciosSup[h.super_] || null;
+      const m = calcularCorretor(raw, nome, ini, fim, inicioSup);
       return {
         // Identidade
         corretor: nome, superintendente: h.super_, gerente: h.gerente,
@@ -276,6 +351,10 @@ export function calcularData(raw, ini, fim) {
         diasTrabalhados: m.diasTrabalhados, folgas: m.folgas,
         antes20h: m.antes20h, ate00h: m.ate00h, retroativo: m.retroativo,
         streak: m.streak,
+        // Régua de score
+        diasElegiveis: m.diasElegiveis, maiorSeqFolgas: m.maiorSeqFolgas,
+        corujao: m.corujao, supAtivo: !!inicioSup,
+        inicioSup: inicioSup ? d0(inicioSup).toLocaleDateString('pt-BR') : null,
         // Atividade
         leads: m.leads, leadsSF: m.leadsSF, leadsBlip: m.leadsBlip,
         agendSF: m.agendSF, agendBlip: m.agendBlip,
@@ -308,6 +387,22 @@ export function calcularData(raw, ini, fim) {
       return a.corretor.localeCompare(b.corretor);
     });
 
+  // ---- Referência do time (régua relativa do score) ----
+  // GLOBAL de propósito: calculada sobre TODOS os corretores do período, nunca
+  // sobre a lista filtrada. Senão o mesmo corretor tiraria nota diferente na
+  // tela do SUP e na tela da Diretoria.
+  const base = corretores.filter(c =>
+    c.supAtivo && c.diasTrabalhados >= SCORE_CFG.referencia.minDiasParaEntrar);
+
+  const referencia = {
+    n: base.length,
+    leadsDia:      mediana(base.map(c => c.leads      / c.diasTrabalhados)),
+    agendDia:      mediana(base.map(c => c.agendForm2 / c.diasTrabalhados)),
+    taxaLeadAgend: mediana(base.map(c => c.taxaLeadAgend)),
+    provisoria:    base.length < SCORE_CFG.referencia.minCorretores,
+    supsAtivos:    [...new Set(base.map(c => c.superintendente))].filter(Boolean).sort(),
+  };
+
   // Média real dos corretores com dados
   const ativos = corretores.filter(c => c.diasTrabalhados > 0);
   const avg = fn => ativos.length ? ativos.reduce((s,c) => s + fn(c), 0) / ativos.length : 0;
@@ -331,8 +426,12 @@ export function calcularData(raw, ini, fim) {
     canaisAg: {}, canaisVs: {},
   };
 
+  // Anexa a régua a cada corretor: telas que chamam statusCorretor(c) sem o
+  // segundo argumento (P3) continuam funcionando e usam a MESMA referência.
+  corretores.forEach(c => { c._ref = referencia; });
+
   const supers   = [...new Set(corretores.map(c=>c.superintendente))].filter(Boolean).sort();
   const gerentes = [...new Set(corretores.map(c=>c.gerente))].filter(Boolean).sort();
 
-  return { media, corretores, supers, gerentes };
+  return { media, corretores, supers, gerentes, referencia, iniciosSup };
 }

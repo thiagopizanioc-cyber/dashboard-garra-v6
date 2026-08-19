@@ -131,8 +131,11 @@ export function Card({ title, children, className='' }) {
 // ---- Score ring ----
 export function ScoreRing({ score }) {
   const r = 28, circ = 2*Math.PI*r;
-  const dash = (score/100)*circ;
-  const color = score>=65?'#f59e0b':score>=35?'#60a5fa':'#f87171';
+  // score pode ser null ("Não iniciado" — SUP ainda sem cobrança). Sem isso o
+  // anel renderiza "null" no meio do círculo.
+  const s = Number.isFinite(score) ? score : null;
+  const dash = ((s ?? 0)/100)*circ;
+  const color = s === null ? '#6b7280' : s>=65?'#f59e0b':s>=35?'#60a5fa':'#f87171';
   return (
     <svg width="72" height="72" viewBox="0 0 72 72">
       <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="5"/>
@@ -140,7 +143,7 @@ export function ScoreRing({ score }) {
         strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
         transform="rotate(-90 36 36)"/>
       <text x="36" y="41" textAnchor="middle" fill={color}
-        style={{fontSize:'14px',fontWeight:600,fontFamily:'inherit'}}>{score}</text>
+        style={{fontSize:'14px',fontWeight:600,fontFamily:'inherit'}}>{s === null ? '—' : s}</text>
     </svg>
   );
 }

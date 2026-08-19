@@ -31,22 +31,11 @@ export const semaforoInfo = {
   neutro:   { icon:'⚪', color:'#94a3b8', bg:'rgba(148,163,184,0.08)' },
 };
 
-// ---- Score de engajamento (0-100) ----
-export function scoreEngajamento(c) {
-  const disciplina = c.diasTrabalhados > 0
-    ? Math.min(1, (c.antes20h + c.ate00h) / c.diasTrabalhados) : 0;
-  const atividade  = Math.min(1, c.leads / 30);
-  const perf       = Math.min(1, c.taxaLeadAgend * 4);
-  return Math.round((disciplina*0.4 + atividade*0.3 + perf*0.3)*100);
-}
-
-export function statusCorretor(c) {
-  const score = scoreEngajamento(c);
-  if (c.diasTrabalhados === 0) return { label:'Sem dados', color:'#6b7280', bg:'#1f2937', score:0 };
-  if (score >= 65) return { label:'Destaque', color:'#f59e0b', bg:'#1c1500', score };
-  if (score >= 35) return { label:'Regular',  color:'#60a5fa', bg:'#0f1729', score };
-  return { label:'Atenção', color:'#f87171', bg:'#1f0f0f', score };
-}
+// ---- Score de engajamento ----
+// A régua mora em scoreConfig.js. Reexportado aqui só para não quebrar imports
+// existentes. ATENÇÃO: statusCorretor agora recebe (corretor, referencia) —
+// a referência vem de data.referencia (mediana do time no período).
+export { calcularScore, statusCorretor, SCORE_CFG } from './scoreConfig';
 
 // ---- Consolidar um grupo de corretores ----
 export function consolidar(lista) {
@@ -103,4 +92,9 @@ export function pontosDeAtencao(corretores, media) {
     alertas.push({ nivel:'vermelho', msg:`Mais de 5 folgas: ${muitasFolgas.map(c=>`${c.corretor} (${c.folgas})`).join(', ')}` });
   }
   return alertas;
+}
+
+// Contador de cobrança — quantas vezes o gerente teve que reverter folga automática
+export function cobradoNVezes(c) {
+  return c?.retroativo || 0;
 }

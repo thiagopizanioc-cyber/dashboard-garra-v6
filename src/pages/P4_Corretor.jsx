@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Card, FunilBar, ScoreRing, MiniBar, PersonCard } from '../components/Shared';
+import { Card, FunilBar, MiniBar, PersonCard } from '../components/Shared';
+import { ScorePanel } from '../components/ScorePanel';
 import { PainelRastreabilidade } from '../components/VendasExternas';
 import { RelatorioModal } from '../components/RelatorioModal';
 import { fmt, statusCorretor, topCanais } from '../utils/index';
@@ -294,7 +295,7 @@ function GerenteBlock({ c }) {
 
 export function P4_Corretor({ data, controle, target, setPage, media, getPhoto,
                               vendas, corretoresPBI, alertasRastreabilidade, savePhoto, raw }) {
-  const { corretores, supers, gerentes } = data;
+  const { corretores, supers, gerentes, referencia } = data;
 
   const [selectedSuper, setSelectedSuper] = useState(target?.data?.superintendente || supers[0] || '');
   const [selectedGer,   setSelectedGer]   = useState(target?.data?.gerente || '');
@@ -310,7 +311,7 @@ export function P4_Corretor({ data, controle, target, setPage, media, getPhoto,
     .map(c=>c.corretor).filter((v,i,a)=>v&&a.indexOf(v)===i).sort();
 
   const corretor = corretores.find(c=>c.corretor===selectedCor) || null;
-  const st = corretor ? statusCorretor(corretor) : null;
+  const st = corretor ? statusCorretor(corretor, referencia) : null;
 
   return (
     <div className="page">
@@ -404,7 +405,7 @@ export function P4_Corretor({ data, controle, target, setPage, media, getPhoto,
               {/* Foto do corretor */}
               <PersonCard nome={corretor.corretor} size={72} getPhoto={getPhoto}/>
               {/* Score isolado ao lado */}
-              <ScoreRing score={st.score}/>
+              <ScorePanel corretor={corretor} referencia={referencia}/>
               <div>
                 <div className="cor-nome" translate="no">{corretor.corretor}</div>
                 <div className="cor-sub" translate="no">{corretor.gerente} · {corretor.superintendente}</div>
