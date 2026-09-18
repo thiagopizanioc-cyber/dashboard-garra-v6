@@ -9,8 +9,14 @@ const PAGES = [
   { id:'ranking',   icon:'🏆', label:'Ranking',           sub:'Hall da fama' },
 ];
 
-export function Nav({ page, setPage, lastUpdate, refetch, theme, setTheme }) {
+export function Nav({ page, setPage, lastUpdate, refetch, theme, setTheme,
+                      paginas, escopoSup }) {
   const [open, setOpen] = useState(false);
+
+  // Só as páginas permitidas pelo escopo (link de SUP não mostra Diretoria)
+  const menu = paginas && paginas.length
+    ? PAGES.filter(p => paginas.includes(p.id))
+    : PAGES;
 
   function navTo(id) { setPage(id); setOpen(false); }
 
@@ -23,7 +29,7 @@ export function Nav({ page, setPage, lastUpdate, refetch, theme, setTheme }) {
     return () => document.removeEventListener('click', handle);
   }, [open]);
 
-  const currentPage = PAGES.find(p => p.id === page);
+  const currentPage = menu.find(p => p.id === page) || menu[0];
 
   return (
     <>
@@ -55,12 +61,12 @@ export function Nav({ page, setPage, lastUpdate, refetch, theme, setTheme }) {
           <img src="/logo-ouro.jpeg" className="nav-logo-img" alt="GARRA"/>
           <div>
             <div className="nav-title">GARRA</div>
-            <div className="nav-sub">Sistema de Performance</div>
+            <div className="nav-sub">{escopoSup ? 'SUP. ' + escopoSup : 'Sistema de Performance'}</div>
           </div>
         </div>
 
         <div className="nav-menu">
-          {PAGES.map(p => (
+          {menu.map(p => (
             <button key={p.id} className={`nav-item ${page===p.id?'active':''}`} onClick={() => navTo(p.id)}>
               <span className="nav-icon">{p.icon}</span>
               <div className="nav-labels">
