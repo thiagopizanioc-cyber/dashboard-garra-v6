@@ -65,11 +65,13 @@ export const SCORE_CFG = {
   overrideInicioSup: {},
 
   // --- Faixas ---
-  // PROVISÓRIAS. Recalibrar rodando a distribuição real depois de ~3 semanas
-  // de preenchimento do piloto. Não tratar como definitivo.
+  // Calibradas em 18/09/2026 sobre a distribuição de 35 corretores (massa de
+  // setembro): scores reais ficaram entre 57 e 96. Com 65/35 praticamente todo
+  // mundo virava "Destaque" — presença + disciplina sozinhas já garantem 60 pts.
+  // Recalibrar de novo quando houver ~3 semanas de preenchimento REAL.
   faixas: {
-    destaque: 65,
-    regular:  35,
+    destaque: 88,
+    regular:  75,
   },
 };
 
