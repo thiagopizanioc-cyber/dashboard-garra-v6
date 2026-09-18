@@ -3,6 +3,7 @@ import { useRawData } from './hooks/useRawData';
 import { usePhotos } from './hooks/usePhotos';
 import { useVendasExternas, useResumoExterno, verificarRastreabilidade } from './hooks/useVendasExternas';
 import { calcularData, calcularPeriodoAnterior } from './utils/calcEngine';
+import { resolverAcesso, filtrarPorEscopo, limparUrl } from './acesso';
 import { Nav } from './components/Nav';
 import { DateRangePicker } from './components/DateRangePicker';
 import { P1_Diretoria }        from './pages/P1_Diretoria';
@@ -55,6 +56,21 @@ function ErrorScreen({ error, refetch }) {
   );
 }
 
+function AcessoNegado() {
+  return (
+    <div className="error-screen">
+      <div style={{fontSize:40}}>🔒</div>
+      <h2>Link de acesso inválido</h2>
+      <div className="error-card">
+        <p>Este endereço não dá acesso ao painel.</p>
+        <p>Use o link completo que foi enviado para você — ele termina
+           com <code>?e=</code> seguido do seu código. Se copiou pela metade
+           ou digitou à mão, peça o link novamente.</p>
+      </div>
+    </div>
+  );
+}
+
 // Detecta o último período registrado no CONTROLE_DIARIO
 function detectarPeriodoInicial(raw) {
   if (!raw?.controle?.length) {
@@ -76,10 +92,15 @@ export default function App() {
           fetchVendas } = useVendasExternas();
   const { resumo: resumoPBI, fetchResumo } = useResumoExterno();
 
-  const [page, setPage]     = useState('diretoria');
+  // Escopo de visualização (?e=<token>). Resolvido uma vez, no carregamento.
+  const acesso = useMemo(() => resolverAcesso(), []);
+
+  const [page, setPage]     = useState(acesso.inicial);
   const [target, setTarget] = useState(null);
   const [theme, setTheme]   = useState('light');
   const [calculating, setCalculating] = useState(false);
+  // Ranking: o SUP pode alternar entre só o time dele e a Diretoria inteira
+  const [rankGeral, setRankGeral] = useState(false);
 
   // Período selecionado
   const [periodo, setPeriodo] = useState(null);
@@ -95,6 +116,11 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Token lido — tira da barra de endereços (print de tela, projetor, histórico)
+  useEffect(() => {
+    if (acesso.escopo !== 'negado') limparUrl();
+  }, [acesso]);
+
   // Calcula os dados do período selecionado
   const data = useMemo(() => {
     if (!raw || !periodo) return null;
@@ -107,6 +133,11 @@ export default function App() {
     const ant = calcularPeriodoAnterior(periodo.ini, periodo.fim);
     return calcularData(raw, ant.ini, ant.fim);
   }, [raw, periodo]);
+
+  // Recorte por escopo — depois do cálculo, para não mexer na régua do score
+  const dataEscopo = useMemo(() => filtrarPorEscopo(data, acesso), [data, acesso]);
+  const dataAntEscopo = useMemo(
+    () => filtrarPorEscopo(dataPeriodoAnterior, acesso), [dataPeriodoAnterior, acesso]);
 
   // Controle diário para padrões de folga
   const controle = useMemo(() => {
@@ -149,6 +180,12 @@ export default function App() {
   const vendasProps = { vendas, corretoresPBI, resumoPBI, loadVendas, errVendas, lastVendas,
                         fetchVendas, fetchResumo, alertasRastreabilidade };
 
+  // Navegação: ignora página fora do escopo (ex.: Diretoria num link de SUP)
+  function irPara(p) {
+    if (!acesso.paginas.includes(p)) return;
+    setPage(p);
+  }
+
   function handlePeriodoChange(ini, fim) {
     setCalculating(true);
     setTimeout(() => {
@@ -157,21 +194,27 @@ export default function App() {
     }, 50);
   }
 
+  if (acesso.escopo === 'negado') return <AcessoNegado/>;
   if (loading) return <LoadingScreen msg="Carregando dados brutos da planilha..."/>;
   if (error)   return <ErrorScreen error={error} refetch={refetch}/>;
   if (!data)   return <LoadingScreen msg="Calculando métricas do período..."/>;
 
   const renderPage = () => {
-    const props = { data, controle, target, setTarget, setPage, getPhoto, savePhoto,
-                    dataPeriodoAnterior, raw, ...vendasProps };
-    switch(page) {
-      case 'diretoria': return <P1_Diretoria {...props}/>;
+    const paginaAtual = acesso.paginas.includes(page) ? page : acesso.inicial;
+    const props = { data: dataEscopo, controle, target, setTarget, setPage: irPara,
+                    getPhoto, savePhoto, dataPeriodoAnterior: dataAntEscopo,
+                    raw, ...vendasProps };
+    // Ranking é o único que pode olhar a Diretoria inteira (competitividade)
+    const dataRanking = (acesso.escopo === 'sup' && !rankGeral) ? dataEscopo : data;
+    switch(paginaAtual) {
+      case 'diretoria': return <P1_Diretoria {...props} data={data}
+                                 dataPeriodoAnterior={dataPeriodoAnterior}/>;
       case 'super':     return <P2_Superintendencia {...props}/>;
       case 'gerencia':  return <P3_Gerencia {...props}/>;
-      case 'corretor':  return <P4_Corretor {...props} media={data.media}/>;
-      case 'arena':     return <P5_Arena data={data}/>;
-      case 'ranking':   return <P6_Ranking data={data} getPhoto={getPhoto} savePhoto={savePhoto}/>;
-      default:          return <P1_Diretoria {...props}/>;
+      case 'corretor':  return <P4_Corretor {...props} media={dataEscopo.media}/>;
+      case 'arena':     return <P5_Arena data={dataEscopo}/>;
+      case 'ranking':   return <P6_Ranking data={dataRanking} getPhoto={getPhoto} savePhoto={savePhoto}/>;
+      default:          return <P2_Superintendencia {...props}/>;
     }
   };
 
@@ -180,7 +223,8 @@ export default function App() {
       <div className="watermark" aria-hidden="true">
         <img src="/logo-prata-bg.jpg" alt=""/>
       </div>
-      <Nav page={page} setPage={(p)=>{setPage(p);setTarget(null);}}
+      <Nav page={page} setPage={(p)=>{irPara(p);setTarget(null);}}
+           paginas={acesso.paginas} escopoSup={acesso.sup}
            lastUpdate={lastUpdate} refetch={refetch}
            theme={theme} setTheme={setTheme}/>
       <div className="content">
@@ -208,6 +252,14 @@ export default function App() {
             </div>
           )}
         </div>
+        {acesso.escopo === 'sup' && page === 'ranking' && (
+          <div className="periodo-bar" style={{gap:8, alignItems:'center'}}>
+            <button className={rankGeral ? 'topbar-btn' : 'btn-primary'}
+                    onClick={() => setRankGeral(false)}>🏢 Só {acesso.sup}</button>
+            <button className={rankGeral ? 'btn-primary' : 'topbar-btn'}
+                    onClick={() => setRankGeral(true)}>🏛️ Diretoria inteira</button>
+          </div>
+        )}
         {calculating
           ? <div className="calc-overlay">⏳ Calculando métricas...</div>
           : renderPage()}
